@@ -162,6 +162,7 @@ nav .grab:active{transform:translateX(-50%)}
 .check .hx{transform:translate(-50%,-50%) scale(1.4)}
 .check,nav .di{overflow:hidden}
 .hapt{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.labbox{position:relative;flex:none;width:92px;height:52px;display:grid;place-items:center;border:1px dashed rgba(255,255,255,.4);border-radius:14px}
 .check{position:relative;cursor:pointer;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;justify-self:center}
 .check svg{width:18px;height:18px;stroke:var(--ink-3);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .check.on{background:var(--good);border-color:var(--good)}.check.on svg{stroke:#06281a}
@@ -229,7 +230,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.10';
+const LB=2.20462, DAY=864e5, VERSION='0.11';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -473,12 +474,24 @@ function settingsSheet(){
   <div class="row between"><span>Rank standards</span><div class="seg"><button data-a="set" data-k="sex" data-v="male" class="${S.settings.sex==='male'?'on':''}">Male</button><button data-a="set" data-k="sex" data-v="female" class="${S.settings.sex==='female'?'on':''}">Female</button></div></div>
   <div class="row between"><span>Rest timer</span><div class="seg">${[0,60,90,120,180].map(n=>`<button data-a="set" data-k="rest" data-v="${n}" class="${S.settings.rest===n?'on':''}">${n?n+'s':'Off'}</button>`).join('')}</div></div>
   ${sync}
-  <label class="tile small hapt"><span>Haptics check. Flip this switch: if you feel a tick, taps on the dock and set ticks will tick too. If not, your iPhone does not allow it for web apps.</span><input type="checkbox" switch id="hap-test"></label>
+  <div class="tile small hapt"><span>Haptics test. Helps work out which hidden switches your iPhone will tick for.</span><button class="btn sm" data-a="hap-lab">Open</button></div>
   <button class="btn block" data-a="export">Export a backup file</button>
   <label class="btn block">Restore from a backup file<input type="file" id="imp-json" accept=".json,application/json" hidden></label>
   <label class="btn block">Import workouts from a Hevy CSV export<input type="file" id="imp-hevy" accept=".csv,text/csv" hidden></label>
   <button class="btn block danger" data-a="wipe">Delete all my data</button>
   <div class="small muted" style="text-align:center">Apex ${VERSION} · <button class="info" data-a="check-update">Check for updates</button></div></div>`,'settings')}
+/* Temporary diagnostic: each row hides or alters a real switch in one specific way, to find which change stops iOS giving the tick. */
+function hapLab(){const sw=(extra,attrs)=>`<input type="checkbox" switch class="lab" ${attrs||''} style="${extra||''}">`,
+  rows=[['A','Plain switch (should tick)',sw()],
+        ['B','Nearly invisible',sw('opacity:.011')],
+        ['C','Enlarged 2.4x',sw('transform:scale(2.4)')],
+        ['D','Inside a clipped box',`<span style="display:grid;place-items:center;width:100%;height:100%;overflow:hidden;border-radius:999px">${sw()}</span>`],
+        ['E','Hidden from accessibility',sw('','tabindex="-1" aria-hidden="true"')],
+        ['F','Inside a no-scroll zone',`<span style="display:grid;place-items:center;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none">${sw()}</span>`],
+        ['G','Replaced the moment it is tapped',sw('','data-swap="1"')],
+        ['H','Exactly as used on the dock',`<span style="position:relative;display:block;width:100%;height:100%;overflow:hidden;border-radius:999px;touch-action:none">${HX}</span>`],
+        ['I','Fully invisible, stretched',sw('position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0')]];
+  openSheet(`<h2>Haptics test</h2><p>Tap inside each outlined box, one at a time. Tell me the letters where you feel a tick. The count shows the tap registered.</p><div class="list">${rows.map(r=>`<div class="row between"><span><b>${r[0]}</b> · ${r[1]} <span class="muted num" data-count="${r[0]}">0</span></span><span class="labbox" data-row="${r[0]}">${r[2]}</span></div>`).join('')}</div>`,'lab')}
 function pickSheet(){const q=pickQuery.trim().toLowerCase();const list=allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q)));
   openSheet(`<h2>Add exercise</h2><div class="stack"><input type="text" id="pick-q" data-i="pickq" value="${esc(pickQuery)}" placeholder="Search exercises">
   <div class="row" style="overflow-x:auto;padding-bottom:4px">${['All',...MUSCLES].map(m=>`<button class="chip ${pickFilter===m?'on':''}" data-a="pick-filter" data-v="${m}">${m}</button>`).join('')}</div>
@@ -598,6 +611,7 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(
   case 'open':openItem(v);break;
   case 'launcher':launcherOpen();break;
   case 'check-update':checkUpdate(true);break;
+  case 'hap-lab':hapLab();break;
   case 'apply-update':applyUpdate();break;
   case 'dock-edit':dockEdit=!dockEdit;launcherRefresh();break;
   case 'pin':{let d=dock().slice();if(d.includes(v)){if(d.length<=2){toast('Keep at least 2 items in the dock.');break}d=d.filter(x=>x!==v)}else{if(d.length>=5){toast('The dock is full. Remove one first.');break}d.push(v)}
@@ -641,7 +655,7 @@ document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(!i)ret
   else if(i==='wname'){S.active.name=t.value;save('active')}
   else if(i==='pickq'){pickQuery=t.value;const q=pickQuery.trim().toLowerCase();$('#pick-list').innerHTML=pickRows(allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q))))}
   else if(i==='plates'){const v=parseFloat($('#pl-v').value)||0,b=parseFloat($('#pl-b').value)||0,id=t.id,pos=t.selectionStart;platesSheet(v,b);const el=$('#'+id);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}});
-document.addEventListener('change',ev=>{const t=ev.target;if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
+document.addEventListener('change',ev=>{const t=ev.target;const lb=t.closest&&t.closest('.labbox');if(lb){const c=document.querySelector('[data-count="'+lb.dataset.row+'"]');c.textContent=+c.textContent+1;if(t.dataset.swap){const html=lb.innerHTML;lb.innerHTML=html}return}if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){closeSheet();launcherClose()}else if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches&&ev.target.matches('div[role=button]')){ev.preventDefault();ev.target.click()}});
 
 /* ================= boot ================= */
