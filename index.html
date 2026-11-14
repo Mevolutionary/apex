@@ -233,7 +233,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.12';
+const LB=2.20462, DAY=864e5, VERSION='0.13';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -556,16 +556,19 @@ function haptic(){try{if(navigator.vibrate){navigator.vibrate(8);return}
 function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   /* dock: drag along it and the glass highlight follows your finger; swipe up on it to open all features */
   let drag=null;const slot=()=>{const r=nav.getBoundingClientRect(),n=dock().length;return{r,n,w:(r.width-12)/n}},idxAt=x=>{const{r,n,w}=slot();return Math.max(0,Math.min(n-1,Math.floor((x-r.left-6)/w)))};
-  nav.addEventListener('touchstart',e=>{const t=e.touches[0];drag={x0:t.clientX,y0:t.clientY,mode:null,idx:idxAt(t.clientX)}},{passive:true});
-  nav.addEventListener('touchmove',e=>{if(!drag)return;const t=e.touches[0],dx=t.clientX-drag.x0,dy=t.clientY-drag.y0;e.preventDefault();
-    if(!drag.mode){if(dy<-10&&Math.abs(dy)>Math.abs(dx)){drag.mode='up';dockEdit=false;launcherRender()}else{if(Math.abs(dx)<8)return;drag.mode='x';navDragging=true}}
+  /* Sliding ticks: iOS ticks when a finger that started on a switch crosses that switch's midpoint. The touch on a dock item starts on its hidden switch,
+     so each time the finger enters a new item we jump the switch to the other side of the finger, which iOS reads as a crossing. Touch events must not be cancelled here or iOS stops tracking the switch. */
+  const jump=(x,side)=>{const s=drag&&drag.sw;if(!s||!s.parentNode)return;s.style.left=(x-s.parentNode.getBoundingClientRect().left+side*300)+'px'};
+  nav.addEventListener('touchstart',e=>{const t=e.touches[0],el=e.target;drag={x0:t.clientX,y0:t.clientY,mode:null,idx:idxAt(t.clientX),sw:el&&el.classList&&el.classList.contains('hx')?el:null,side:1}},{passive:true});
+  nav.addEventListener('touchmove',e=>{if(!drag)return;const t=e.touches[0],dx=t.clientX-drag.x0,dy=t.clientY-drag.y0;
+    if(!drag.mode){if(dy<-10&&Math.abs(dy)>Math.abs(dx)){drag.mode='up';dockEdit=false;launcherRender()}else{if(Math.abs(dx)<8)return;drag.mode='x';navDragging=true;jump(t.clientX,drag.side)}}
     if(drag.mode==='up'){launcherSet(lFromH(L.dockH-dy),false);return}
     if(drag.mode!=='x')return;
     const{r,n,w}=slot(),ind=nav.querySelector('.ind'),x=Math.max(0,Math.min(r.width-12-w,t.clientX-r.left-6-w/2));ind.style.opacity=1;ind.style.transition='none';ind.style.transform='translateX('+x+'px) scale(1.1,1.2)';
-    const i=idxAt(t.clientX);if(i!==drag.idx||!drag.lit){drag.lit=true;if(i!==drag.idx)haptic();drag.idx=i;nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i));
+    const i=idxAt(t.clientX);if(i!==drag.idx||!drag.lit){drag.lit=true;if(i!==drag.idx){haptic();drag.side=-drag.side;jump(t.clientX,drag.side)}drag.idx=i;nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i));
       /* show the screen under the finger straight away; tools wait until you let go */
-      const id=dock()[i];if(ITEMS[id].kind==='screen'&&id!==tab){go(id);nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i))}}},{passive:false});
-  const endDrag=()=>{if(!drag)return;const d=drag;drag=null;navDragging=false;nav.querySelector('.ind').style.transition='';if(d.mode){lastTabDrag=Date.now()}if(d.mode==='up'){if(L.p>.22){haptic();launcherOpen(L.p>1.3)}else launcherClose()}if(d.mode==='x'){const id=dock()[d.idx];if(id!==tab)openItem(id);renderNav()}};
+      const id=dock()[i];if(ITEMS[id].kind==='screen'&&id!==tab){go(id);nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i))}}},{passive:true});
+  const endDrag=()=>{if(!drag)return;const d=drag;drag=null;navDragging=false;if(d.sw)d.sw.style.left='';nav.querySelector('.ind').style.transition='';if(d.mode){lastTabDrag=Date.now()}if(d.mode==='up'){if(L.p>.22){haptic();launcherOpen(L.p>1.3)}else launcherClose()}if(d.mode==='x'){const id=dock()[d.idx];if(id!==tab)openItem(id);renderNav()}};
   nav.addEventListener('touchend',endDrag);nav.addEventListener('touchcancel',endDrag);
   /* swipe left or right anywhere on a screen to move between docked screens */
   let sw=null;
