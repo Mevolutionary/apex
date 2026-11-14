@@ -58,14 +58,19 @@ html{background:#060814}
 @keyframes fade{from{opacity:0}}
 @keyframes inR{from{opacity:0;transform:translateX(46px)}}
 @keyframes inL{from{opacity:0;transform:translateX(-46px)}}
-main.enter>*{animation:in .68s cubic-bezier(.16,1,.3,1) both}
+@keyframes out{to{opacity:0;transform:scale(.965)}}
+@keyframes outL{to{opacity:0;transform:translateX(-54px)}}
+@keyframes outR{to{opacity:0;transform:translateX(54px)}}
+.ghost{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;animation:out .5s cubic-bezier(.4,0,.2,1) both}
+.ghost.r{animation-name:outL}.ghost.l{animation-name:outR}
+main.enter>*{animation:in .72s .1s cubic-bezier(.16,1,.3,1) both}
 main.enter.r>*{animation-name:inR}main.enter.l>*{animation-name:inL}
 #sheet{touch-action:pan-y}nav{touch-action:none;-webkit-user-select:none;user-select:none}
-main.enter>*:nth-child(2){animation-delay:.06s}main.enter>*:nth-child(3){animation-delay:.12s}main.enter>*:nth-child(4){animation-delay:.18s}main.enter>*:nth-child(5){animation-delay:.24s}main.enter>*:nth-child(n+6){animation-delay:.3s}
+main.enter>*:nth-child(2){animation-delay:.16s}main.enter>*:nth-child(3){animation-delay:.22s}main.enter>*:nth-child(4){animation-delay:.28s}main.enter>*:nth-child(5){animation-delay:.34s}main.enter>*:nth-child(n+6){animation-delay:.4s}
 main.enter .track i{animation:grow 1.15s .3s cubic-bezier(.16,1,.3,1) both;transform-origin:left}
 .check.pop{animation:pop .42s cubic-bezier(.3,1.4,.5,1)}
 #scrim.on{animation:fade .32s}
-@media (prefers-reduced-motion:reduce){.ltile,.field i,main.enter>*,main.enter .track i,.check.pop,#scrim.on,#sheet{animation:none!important}*{transition:none!important}}
+@media (prefers-reduced-motion:reduce){.ghost,.field i,main.enter>*,main.enter .track i,.check.pop,#scrim.on,#sheet{animation:none!important}*{transition:none!important}}
 
 /* shell */
 #app{position:relative;z-index:1;height:100%;max-width:540px;margin:0 auto;display:flex;flex-direction:column}
@@ -113,16 +118,23 @@ input::-webkit-date-and-time-value{text-align:left}
 
 /* tab bar */
 nav{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 14px);width:min(508px,calc(100% - 32px));display:flex;padding:6px;border-radius:999px}
-nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;border-radius:999px;font-size:11px;font-weight:600;color:var(--ink-2)}
-nav button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-nav button{position:relative;z-index:1;transition:color .25s,transform .12s}nav button:active{transform:scale(.92)}
-nav button.on{color:var(--ink)}
+nav .di{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;border-radius:999px;font-size:11px;font-weight:600;color:var(--ink-2)}
+nav .di svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+nav .di{cursor:pointer;position:relative;z-index:1;transition:color .25s,transform .12s}nav .di:active{transform:scale(.92)}
+nav .di.on{color:var(--ink)}
 nav .ind{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/var(--n,5));border-radius:999px;background:rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 14px rgba(0,0,0,.2);transition:transform .58s cubic-bezier(.3,1.3,.45,1),opacity .3s}
 nav .grab{position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:72px;height:18px;flex:none;padding:0;z-index:2}
 nav .grab::after{content:'';position:absolute;left:50%;top:8px;width:36px;height:4px;margin-left:-18px;border-radius:9px;background:rgba(255,255,255,.38)}
 nav .grab:active{transform:translateX(-50%)}
-.lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0 6px}
-.ltile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px 14px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:600;transition:transform .15s,background .25s;animation:in .6s cubic-bezier(.16,1,.3,1) both}
+.lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0 0}
+#lscrim{position:fixed;inset:0;z-index:7;display:none;opacity:0;background:rgba(3,4,10,.5)}
+#launch{position:fixed;z-index:8;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 14px);width:min(508px,calc(100% - 32px));display:none;overflow:hidden;touch-action:none;
+  -webkit-backdrop-filter:blur(36px) saturate(190%);backdrop-filter:blur(36px) saturate(190%);background:linear-gradient(170deg,rgba(255,255,255,.2),rgba(120,130,190,.14) 40%,rgba(20,24,48,.5))}
+#linner{padding:10px 18px 20px;overflow-y:auto;transform-origin:50% 100%;box-sizing:border-box}
+#linner h2{font-size:22px;font-weight:900}
+#linner p{margin:8px 0 0}
+#linner .grabline{width:40px;height:5px;border-radius:9px;background:rgba(255,255,255,.32);margin:0 auto 14px}
+.ltile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px 14px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:600;transition:transform .15s,background .3s,border-color .3s}
 .ltile:active{transform:scale(.94)}
 .ltile svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .ltile em{font-style:normal;font-size:10px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--ink-3)}
@@ -142,7 +154,8 @@ nav .grab:active{transform:translateX(-50%)}
 .sets .n{font-family:var(--display);font-weight:800;text-align:center;color:var(--ink-2)}
 .sets .prev{font-size:13px;color:var(--ink-3);text-align:center;font-variant-numeric:tabular-nums}
 .sets input{min-height:40px;padding:0 4px;text-align:center;border-radius:12px;font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums}
-.check{width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;justify-self:center}
+.hx{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;z-index:3;cursor:pointer}
+.check{position:relative;cursor:pointer;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;justify-self:center}
 .check svg{width:18px;height:18px;stroke:var(--ink-3);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .check.on{background:var(--good);border-color:var(--good)}.check.on svg{stroke:#06281a}
 .done input{background:rgba(95,227,161,.12);border-color:rgba(95,227,161,.3)}
@@ -184,6 +197,8 @@ svg.chart{width:100%;height:auto;display:block}
 <div id="rest" class="glass"><div class="bar" id="restbar"></div><span class="small muted">Rest</span><span class="t" id="restt">0:00</span><span style="flex:1"></span>
   <button class="btn sm" data-a="rest-adj" data-v="-15">−15</button><button class="btn sm" data-a="rest-adj" data-v="15">+15</button><button class="btn sm" data-a="rest-skip">Skip</button></div>
 <nav class="glass" id="nav"></nav>
+<div id="lscrim"></div>
+<div id="launch" class="glass" role="dialog" aria-label="All features"><div id="linner"></div></div>
 <div id="scrim"><div id="sheet" class="glass" role="dialog" aria-modal="true"></div></div>
 <div id="toast" class="glass" role="status"></div>
 
@@ -206,7 +221,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.5';
+const LB=2.20462, DAY=864e5, VERSION='0.6';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -306,15 +321,30 @@ const ITEMS={home:{label:'Home',kind:'screen'},train:{label:'Train',kind:'screen
   food:{label:'Nutrition',kind:'soon',note:'the nutrition update'},scan:{label:'Food scan',kind:'soon',note:'the nutrition update'},coach:{label:'Coach',kind:'soon',note:'the workout generator update'},studies:{label:'Studies',kind:'soon',note:'a later update'},share:{label:'Share card',kind:'soon',note:'a later update'}};
 const SCREENS=Object.keys(ITEMS).filter(k=>ITEMS[k].kind==='screen'),DEFAULT_DOCK=['home','train','history','ranks','body'];
 let dockEdit=false;
+/* An invisible iOS switch laid over a control. A real finger tap on a switch is the one case where iOS still gives web pages a haptic tick. */
+const HX='<input type="checkbox" switch class="hx" tabindex="-1" aria-hidden="true">';
 function dock(){const d=(S.settings.dock||DEFAULT_DOCK).filter(id=>ITEMS[id]&&ITEMS[id].kind!=='soon');return d.length>=2?d.slice(0,5):DEFAULT_DOCK}
 const swipeOrder=()=>{const d=dock().filter(id=>ITEMS[id].kind==='screen');return d.includes(tab)?d:SCREENS};
-function buildNav(){const d=dock(),nav=$('#nav');nav.dataset.sig=d.join();nav.style.setProperty('--n',d.length);nav.innerHTML='<button class="grab" data-a="launcher" aria-label="Open all features"></button><span class="ind"></span>'+d.map(k=>`<button data-a="open" data-v="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${ITEMS[k].label}</button>`).join('')}
-function renderNav(){const d=dock(),nav=$('#nav');if(nav.dataset.sig!==d.join())buildNav();const i=d.indexOf(tab);document.querySelectorAll('#nav button[data-v]').forEach((b,j)=>{b.classList.toggle('on',i===j);b.setAttribute('aria-current',i===j?'page':'false')});const ind=document.querySelector('#nav .ind');if(ind){ind.style.opacity=i<0?0:1;if(i>=0)ind.style.transform='translateX('+i*100+'%)'}}
-function openItem(id){const it=ITEMS[id];if(!it)return;if(it.kind==='screen'){closeSheet();go(id)}else if(id==='plates')platesSheet();else if(id==='settings')settingsSheet();else toast(it.label+' arrives in '+it.note+'.')}
-function launcherSheet(){const d=dock(),tile=id=>{const it=ITEMS[id],pinned=d.includes(id),soon=it.kind==='soon';
+function buildNav(){const d=dock(),nav=$('#nav');nav.dataset.sig=d.join();nav.style.setProperty('--n',d.length);nav.innerHTML='<button class="grab" data-a="launcher" aria-label="Open all features"></button><span class="ind"></span>'+d.map(k=>`<div class="di" role="button" tabindex="0" data-a="open" data-v="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${ITEMS[k].label}${HX}</div>`).join('')}
+function renderNav(){const d=dock(),nav=$('#nav');if(nav.dataset.sig!==d.join())buildNav();const i=d.indexOf(tab);document.querySelectorAll('#nav .di').forEach((b,j)=>{b.classList.toggle('on',i===j);b.setAttribute('aria-current',i===j?'page':'false')});const ind=document.querySelector('#nav .ind');if(ind){ind.style.opacity=i<0?0:1;if(i>=0)ind.style.transform='translateX('+i*100+'%)'}}
+function openItem(id){const it=ITEMS[id];if(!it)return;if(it.kind==='soon'){toast(it.label+' arrives in '+it.note+'.');return}launcherClose();if(it.kind==='screen'){closeSheet();go(id)}else if(id==='plates')platesSheet();else if(id==='settings')settingsSheet()}
+/* The launcher is a floating panel that starts at the dock's exact size and shape and grows upward. p is how open it is, 0 to 1, so a finger can drive it directly. */
+const L={open:false,p:0,H:0,dockH:64,timer:null};
+function launcherRender(){const d=dock(),tile=id=>{const it=ITEMS[id],pinned=d.includes(id),soon=it.kind==='soon';
     return `<button class="ltile ${soon?'soon':''} ${dockEdit&&pinned?'pinned':''}" data-a="${dockEdit&&!soon?'pin':'open'}" data-v="${id}"><svg viewBox="0 0 24 24">${ICON[id]}</svg><span>${it.label}</span>${soon?'<em>Soon</em>':dockEdit?`<em>${pinned?'In dock':'Add'}</em>`:''}</button>`};
-  openSheet(`<div class="row between"><h2 style="margin:0">${dockEdit?'Choose your dock':'All features'}</h2><button class="btn sm" data-a="dock-edit">${dockEdit?'Done':'Edit dock'}</button></div>
-  <p class="small" style="margin-top:8px">${dockEdit?'Tap to add or remove. The dock holds 2 to 5 items.':'Swipe up on the dock any time to open this.'}</p><div class="lgrid">${Object.keys(ITEMS).map(tile).join('')}</div>`,'launcher')}
+  const inner=$('#linner');inner.style.height='auto';
+  inner.innerHTML=`<div class="grabline"></div><div class="row between"><h2>${dockEdit?'Choose your dock':'All features'}</h2><button class="btn sm" data-a="dock-edit">${dockEdit?'Done':'Edit dock'}</button></div>
+  <p class="small muted">${dockEdit?'Tap to add or remove. The dock holds 2 to 5 items.':'Tap one to open it. Pull down to close.'}</p><div class="lgrid">${Object.keys(ITEMS).map(tile).join('')}</div>`;
+  L.dockH=$('#nav').offsetHeight||64;L.H=Math.max(L.dockH+1,Math.min(inner.scrollHeight,Math.round((window.innerHeight||700)*.76)));inner.style.height=L.H+'px'}
+function launcherSet(p,anim){p=Math.max(0,Math.min(1,p));L.p=p;const el=$('#launch'),inner=$('#linner'),nav=$('#nav'),sc=$('#lscrim'),t=anim?'.62s cubic-bezier(.22,1.02,.32,1)':'0s';
+  clearTimeout(L.timer);el.style.display='block';sc.style.display='block';
+  el.style.transition='height '+t+',border-radius '+t;inner.style.transition='opacity '+t+',transform '+t;nav.style.transition='opacity '+(anim?'.4s':'0s');sc.style.transition='opacity '+t;
+  el.style.height=(L.dockH+(L.H-L.dockH)*p)+'px';el.style.borderRadius=(L.dockH/2+(36-L.dockH/2)*Math.min(1,p*2.2))+'px';
+  inner.style.opacity=Math.max(0,Math.min(1,(p-.18)/.5));inner.style.transform='scale('+(.9+.1*p)+')';nav.style.opacity=Math.max(0,1-p*3.2);sc.style.opacity=p;sc.style.pointerEvents=p>.5?'auto':'none';
+  if(p===0)L.timer=setTimeout(()=>{if(L.p===0){el.style.display='none';sc.style.display='none'}},anim?640:0)}
+function launcherOpen(){if(L.p===0){dockEdit=false;launcherRender();launcherSet(0,false);void $('#launch').offsetHeight}L.open=true;launcherSet(1,true)}
+function launcherClose(){if(!L.open&&L.p===0)return;L.open=false;launcherSet(0,true)}
+function launcherRefresh(){launcherRender();launcherSet(1,true)}
 const demoBanner=()=>isEmpty()?`<div class="banner">You are looking at example data so you can see how each screen works. It disappears as soon as you log your first workout or weigh-in.</div>`:'';
 function weekStart(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()}
 function streak(list){let ws=weekStart(),n=0;const has=s=>list.some(w=>w.start>=s&&w.start<s+7*DAY);if(!has(ws))ws-=7*DAY;while(has(ws)){n++;ws-=7*DAY}return n}
@@ -354,7 +384,7 @@ function train(){const a=S.active;if(!a){const last=S.workouts[S.workouts.length
       return `<span class="n">${isPr?'<span class="pr">PR</span>':j+1}</span><span class="prev">${p?disp(p.w||0)+' × '+p.r:'—'}</span>
       <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" step="any" id="w-${i}-${j}" data-i="set" data-x="${i}" data-s="${j}" data-f="w" value="${disp(s.w)}" placeholder="${p?disp(p.w||0):'0'}" aria-label="Weight, set ${j+1}"></span>
       <span class="${s.done?'done':''}"><input type="number" inputmode="numeric" id="r-${i}-${j}" data-i="set" data-x="${i}" data-s="${j}" data-f="r" value="${s.r??''}" placeholder="${p?p.r:'0'}" aria-label="Reps, set ${j+1}"></span>
-      <button class="check ${s.done?'on':''}" data-a="check" data-x="${i}" data-s="${j}" aria-label="Mark set ${j+1} done" aria-pressed="${!!s.done}"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>`}).join('')}</div>
+      <div role="button" tabindex="0" class="check ${s.done?'on':''}" data-a="check" data-x="${i}" data-s="${j}" aria-label="Mark set ${j+1} done" aria-pressed="${!!s.done}"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${HX}</div>`}).join('')}</div>
     <div class="row" style="margin-top:12px"><button class="btn sm" style="flex:1" data-a="add-set" data-x="${i}">Add set</button>${e.sets.length>1?`<button class="btn sm" data-a="rm-set" data-x="${i}">Remove last</button>`:''}</div></section>`}).join('')}
   <button class="btn block" data-a="pick">Add exercise</button>
   <div class="row"><button class="btn danger" style="flex:1" data-a="cancel">Discard</button><button class="btn primary" style="flex:2" data-a="finish">Finish workout</button></div>`}
@@ -397,7 +427,10 @@ function body(){const l=V().weights,tr=trend(l),cur=l[l.length-1],tnow=tr[tr.len
   ${isEmpty()||!l.length?'':`<section class="glass card"><h2>Entries</h2><div class="list">${l.slice().reverse().slice(0,30).map(w=>`<div class="row between"><span>${niceDate(w.d+'T12:00')}</span><div class="row"><span class="num" style="font-weight:700">${disp(w.kg)} ${unit()}</span><button class="btn sm danger" data-a="del-weight" data-v="${w.d}" aria-label="Delete weigh-in from ${w.d}">Delete</button></div></div>`).join('')}</div></section>`}`}
 
 function render(){renderNav();const v=$('#view');v.innerHTML=({home,train,history,ranks,body})[tab]();tick()}
-function go(t){const ix=k=>SCREENS.indexOf(k),o=ix(tab),n=ix(t);tab=t;render();const v=$('#view');v.scrollTop=0;v.classList.remove('enter','l','r');void v.offsetWidth;v.classList.add('enter');if(n>o)v.classList.add('r');else if(n<o)v.classList.add('l')}
+function go(t){const ix=k=>SCREENS.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
+  /* leave a copy of the old screen behind for a moment so it can fade and slide away while the new one arrives */
+  try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),560)}}catch(e){}
+  tab=t;render();v.scrollTop=0;v.classList.remove('enter','l','r');void v.offsetWidth;v.classList.add('enter');if(dir)v.classList.add(dir)}
 
 /* ================= sheets ================= */
 function openSheet(html,kind){$('#sheet').dataset.kind=kind||'';$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#scrim').classList.add('on');$('#sheet').scrollTop=0}
@@ -498,17 +531,24 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   let drag=null;const slot=()=>{const r=nav.getBoundingClientRect(),n=dock().length;return{r,n,w:(r.width-12)/n}},idxAt=x=>{const{r,n,w}=slot();return Math.max(0,Math.min(n-1,Math.floor((x-r.left-6)/w)))};
   nav.addEventListener('touchstart',e=>{const t=e.touches[0];drag={x0:t.clientX,y0:t.clientY,mode:null,idx:idxAt(t.clientX)}},{passive:true});
   nav.addEventListener('touchmove',e=>{if(!drag)return;const t=e.touches[0],dx=t.clientX-drag.x0,dy=t.clientY-drag.y0;e.preventDefault();
-    if(!drag.mode){if(dy<-22&&Math.abs(dy)>Math.abs(dx)){drag.mode='up';haptic();dockEdit=false;launcherSheet();return}if(Math.abs(dx)<8)return;drag.mode='x'}
+    if(!drag.mode){if(dy<-10&&Math.abs(dy)>Math.abs(dx)){drag.mode='up';dockEdit=false;launcherRender()}else{if(Math.abs(dx)<8)return;drag.mode='x'}}
+    if(drag.mode==='up'){launcherSet(-dy/(L.H-L.dockH),false);return}
     if(drag.mode!=='x')return;
     const{r,n,w}=slot(),ind=nav.querySelector('.ind'),x=Math.max(0,Math.min(r.width-12-w,t.clientX-r.left-6-w/2));ind.style.opacity=1;ind.style.transition='none';ind.style.transform='translateX('+x+'px) scale(1.1,1.2)';
-    const i=idxAt(t.clientX);if(i!==drag.idx||!drag.lit){drag.lit=true;if(i!==drag.idx)haptic();drag.idx=i;nav.querySelectorAll('button[data-v]').forEach((b,j)=>b.classList.toggle('on',j===i))}},{passive:false});
-  const endDrag=()=>{if(!drag)return;const d=drag;drag=null;nav.querySelector('.ind').style.transition='';if(d.mode){lastTabDrag=Date.now()}if(d.mode==='x'){const id=dock()[d.idx];if(id!==tab)openItem(id);renderNav()}};
+    const i=idxAt(t.clientX);if(i!==drag.idx||!drag.lit){drag.lit=true;if(i!==drag.idx)haptic();drag.idx=i;nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i))}},{passive:false});
+  const endDrag=()=>{if(!drag)return;const d=drag;drag=null;nav.querySelector('.ind').style.transition='';if(d.mode){lastTabDrag=Date.now()}if(d.mode==='up'){if(L.p>.22){haptic();launcherOpen()}else launcherClose()}if(d.mode==='x'){const id=dock()[d.idx];if(id!==tab)openItem(id);renderNav()}};
   nav.addEventListener('touchend',endDrag);nav.addEventListener('touchcancel',endDrag);
   /* swipe left or right anywhere on a screen to move between docked screens */
   let sw=null;
   view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input,select')?null:{x:t.clientX,y:t.clientY}},{passive:true});
   view.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;sw=null;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.8)return;
     const o=swipeOrder(),n=o.indexOf(tab)+(dx<0?1:-1);if(n<0||n>=o.length)return;haptic();go(o[n])},{passive:true});
+  /* pull the launcher back down into the dock */
+  const la=$('#launch');let ld=null;
+  la.addEventListener('touchstart',e=>{ld=L.open&&$('#linner').scrollTop<=0?{y:e.touches[0].clientY,on:false}:null},{passive:true});
+  la.addEventListener('touchmove',e=>{if(!ld)return;const dy=e.touches[0].clientY-ld.y;if(!ld.on&&dy<8)return;ld.on=true;e.preventDefault();launcherSet(1-dy/(L.H-L.dockH),false)},{passive:false});
+  const endL=()=>{if(!ld)return;const on=ld.on;ld=null;if(!on)return;if(L.p<.72)launcherClose();else launcherSet(1,true)};
+  la.addEventListener('touchend',endL);la.addEventListener('touchcancel',endL);
   /* pull a sheet down to dismiss it */
   let sd=null;
   sh.addEventListener('touchstart',e=>{sd=sh.scrollTop<=0&&!e.target.closest('input,select')?{y:e.touches[0].clientY,dy:0}:null},{passive:true});
@@ -517,19 +557,19 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   sh.addEventListener('touchend',endSheet);sh.addEventListener('touchcancel',endSheet)}
 
 /* ================= events ================= */
-document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(ev.target.id==='scrim'){closeSheet();return}if(!b)return;const a=b.dataset.a,v=b.dataset.v,x=+b.dataset.x,s=+b.dataset.s;
+document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(ev.target.id==='scrim'){closeSheet();return}if(ev.target.id==='lscrim'){launcherClose();return}if(!b)return;const a=b.dataset.a,v=b.dataset.v,x=+b.dataset.x,s=+b.dataset.s;
   if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
   if((a==='open'||a==='launcher')&&b.closest('#nav')&&Date.now()-lastTabDrag<450)return;
   haptic();
   switch(a){
   case 'tab':go(v);break;
   case 'open':openItem(v);break;
-  case 'launcher':dockEdit=false;launcherSheet();break;
+  case 'launcher':launcherOpen();break;
   case 'check-update':checkUpdate(true);break;
   case 'apply-update':applyUpdate();break;
-  case 'dock-edit':dockEdit=!dockEdit;launcherSheet();break;
+  case 'dock-edit':dockEdit=!dockEdit;launcherRefresh();break;
   case 'pin':{let d=dock().slice();if(d.includes(v)){if(d.length<=2){toast('Keep at least 2 items in the dock.');break}d=d.filter(x=>x!==v)}else{if(d.length>=5){toast('The dock is full. Remove one first.');break}d.push(v)}
-    S.settings.dock=Object.keys(ITEMS).filter(k=>d.includes(k));save('settings');renderNav();launcherSheet();break}
+    S.settings.dock=Object.keys(ITEMS).filter(k=>d.includes(k));save('settings');renderNav();launcherRefresh();break}
   case 'settings':settingsSheet();break;
   case 'info':openSheet(INFO[v]);break;
   case 'close':closeSheet();break;
@@ -570,7 +610,7 @@ document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(!i)ret
   else if(i==='pickq'){pickQuery=t.value;const q=pickQuery.trim().toLowerCase();$('#pick-list').innerHTML=pickRows(allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q))))}
   else if(i==='plates'){const v=parseFloat($('#pl-v').value)||0,b=parseFloat($('#pl-b').value)||0,id=t.id,pos=t.selectionStart;platesSheet(v,b);const el=$('#'+id);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}});
 document.addEventListener('change',ev=>{const t=ev.target;if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet()});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){closeSheet();launcherClose()}else if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches&&ev.target.matches('div[role=button]')){ev.preventDefault();ev.target.click()}});
 
 /* ================= boot ================= */
 localLoad();buildDemo();buildNav();go(tab);initGestures();initCloud();
