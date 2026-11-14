@@ -56,7 +56,11 @@ html{background:#060814}
 @keyframes grow{from{transform:scaleX(0)}}
 @keyframes pop{40%{transform:scale(1.25)}}
 @keyframes fade{from{opacity:0}}
+@keyframes inR{from{opacity:0;transform:translateX(46px)}}
+@keyframes inL{from{opacity:0;transform:translateX(-46px)}}
 main.enter>*{animation:in .42s cubic-bezier(.2,.85,.25,1) both}
+main.enter.r>*{animation-name:inR}main.enter.l>*{animation-name:inL}
+#sheet{touch-action:pan-y}nav{touch-action:none;-webkit-user-select:none;user-select:none}
 main.enter>*:nth-child(2){animation-delay:.04s}main.enter>*:nth-child(3){animation-delay:.08s}main.enter>*:nth-child(4){animation-delay:.12s}main.enter>*:nth-child(5){animation-delay:.16s}main.enter>*:nth-child(n+6){animation-delay:.2s}
 main.enter .track i{animation:grow .8s .2s cubic-bezier(.2,.85,.25,1) both;transform-origin:left}
 .check.pop{animation:pop .32s cubic-bezier(.3,1.4,.5,1)}
@@ -65,25 +69,25 @@ main.enter .track i{animation:grow .8s .2s cubic-bezier(.2,.85,.25,1) both;trans
 
 /* shell */
 #app{position:relative;z-index:1;height:100%;max-width:540px;margin:0 auto;display:flex;flex-direction:column}
-main{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 150px);display:flex;flex-direction:column;gap:14px}
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px 2px}
-.top h1{font-size:34px;font-weight:900;letter-spacing:-.5px}
-.top .sub{color:var(--ink-2);font-size:14px}
+main{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 26px) 18px calc(env(safe-area-inset-bottom) + 132px);display:flex;flex-direction:column;gap:16px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 6px 4px}
+.top h1{font-size:32px;font-weight:900;letter-spacing:-.4px;line-height:1.1}
+.top .sub{color:var(--ink-2);font-size:14px;margin-bottom:2px}
 
 /* glass */
 .glass{position:relative;background:linear-gradient(160deg,var(--glass-strong),var(--glass) 45%,rgba(255,255,255,.04));
   -webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%);
   border:1px solid var(--edge);border-radius:var(--r);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.04),0 14px 34px rgba(0,0,0,.32)}
-.card{padding:18px}
+.card{padding:20px}
 .card h2{font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px;justify-content:space-between}
-.card h2+*{margin-top:12px}
+.card h2+*{margin-top:14px}
 .muted{color:var(--ink-2)}.small{font-size:13px}
 .info{color:var(--ink-3);font-size:12px;text-decoration:underline;text-underline-offset:3px;font-family:var(--body);font-weight:400}
 .row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}.wrap{flex-wrap:wrap}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.tile{padding:14px 12px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
-.tile b{display:block;font-family:var(--display);font-size:24px;font-weight:900;font-variant-numeric:tabular-nums}
+.tile{padding:14px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.tile b{display:block;font-family:var(--display);font-size:22px;line-height:1.2;margin-bottom:2px;font-weight:900;font-variant-numeric:tabular-nums}
 .tile span{font-size:12px;color:var(--ink-2)}
 
 /* buttons */
@@ -135,13 +139,13 @@ nav .ind{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/
 
 /* lists */
 .list{display:flex;flex-direction:column}
-.list>*{padding:12px 0;border-top:1px solid rgba(255,255,255,.09)}
+.list>*{padding:14px 0;border-top:1px solid rgba(255,255,255,.09)}
 .list>*:first-child{border-top:0;padding-top:0}.list>*:last-child{padding-bottom:0}
-.bars{display:flex;flex-direction:column;gap:8px}
+.bars{display:flex;flex-direction:column;gap:12px}
 .barrow{display:grid;grid-template-columns:92px 1fr 28px;gap:10px;align-items:center;font-size:13px}
 .track{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
 .track i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--cool),var(--warm))}
-.banner{padding:12px 16px;border-radius:18px;font-size:13px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35);color:#ffe6a8}
+.banner{padding:14px 18px;line-height:1.45;border-radius:18px;font-size:13px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35);color:#ffe6a8}
 .emblem{flex:none}
 .rankrow{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center}
 
@@ -192,7 +196,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.2';
+const LB=2.20462, DAY=864e5, VERSION='0.3';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -344,7 +348,7 @@ function ranks(){const bw=bwNow(),o=overall();
   <section class="glass card"><div class="row" style="gap:16px">${emblem(o?o.tier:0,64)}<div><div class="small muted">Overall</div><div class="num" style="font-size:26px;font-weight:900">${o?TIERS[o.tier][0]:'Unranked'}</div><div class="small muted">At ${disp(bw)||'—'} ${unit()} bodyweight</div></div></div></section>
   ${Object.keys(STD).map(id=>{const r=rankFor(id),ex=exById(id);
     return `<section class="glass card"><div class="rankrow">${emblem(r?r.tier:0,52)}<div><div class="row between"><h3 style="font-size:16px;font-weight:800">${ex.name}</h3><span class="num" style="font-weight:800;color:${r?TIERS[r.tier][1]:'var(--ink-3)'}">${r?TIERS[r.tier][0]:'Not logged'}</span></div>
-    ${r?`<div class="track" style="margin:8px 0 6px"><i style="width:${Math.round(r.prog*100)}%"></i></div><div class="small muted num">Est. 1RM ${disp(r.kg)} ${unit()} · ${r.ratio.toFixed(2)}× bodyweight${r.nextKg?` · ${TIERS[r.tier+1][0]} at ${disp(r.nextKg)} ${unit()}`:''}</div>`:`<div class="small muted" style="margin-top:4px">Log a set to rank this lift.</div>`}</div></div></section>`}).join('')}
+    ${r?`<div class="track" style="margin:8px 0 6px"><i style="width:${Math.round(r.prog*100)}%"></i></div><div class="small muted num">Est. 1RM ${disp(r.kg)} ${unit()} · ${r.ratio.toFixed(2)}× bodyweight</div>${r.nextKg?`<div class="small muted num" style="margin-top:2px">${TIERS[r.tier+1][0]} at ${disp(r.nextKg)} ${unit()}</div>`:''}`:`<div class="small muted" style="margin-top:4px">Log a set to rank this lift.</div>`}</div></div></section>`}).join('')}
   <section class="glass card"><h2>Tiers</h2><div class="row wrap">${TIERS.map((t,i)=>`<span class="chip" style="color:${t[1]}">${t[0]}</span>`).join('')}</div></section>`}
 
 function trend(list){let t=null;return list.map(w=>{t=t==null?w.kg:t+.1*(w.kg-t);return t})}
@@ -369,7 +373,7 @@ function body(){const l=V().weights,tr=trend(l),cur=l[l.length-1],tnow=tr[tr.len
   ${isEmpty()||!l.length?'':`<section class="glass card"><h2>Entries</h2><div class="list">${l.slice().reverse().slice(0,30).map(w=>`<div class="row between"><span>${niceDate(w.d+'T12:00')}</span><div class="row"><span class="num" style="font-weight:700">${disp(w.kg)} ${unit()}</span><button class="btn sm danger" data-a="del-weight" data-v="${w.d}" aria-label="Delete weigh-in from ${w.d}">Delete</button></div></div>`).join('')}</div></section>`}`}
 
 function render(){renderNav();const v=$('#view');v.innerHTML=({home,train,history,ranks,body})[tab]();tick()}
-function go(t){tab=t;render();const v=$('#view');v.scrollTop=0;v.classList.remove('enter');void v.offsetWidth;v.classList.add('enter')}
+function go(t){const ix=k=>TABS.findIndex(x=>x[0]===k),o=ix(tab),n=ix(t);tab=t;render();const v=$('#view');v.scrollTop=0;v.classList.remove('enter','l','r');void v.offsetWidth;v.classList.add('enter');if(n>o)v.classList.add('r');else if(n<o)v.classList.add('l')}
 
 /* ================= sheets ================= */
 function openSheet(html,kind){$('#sheet').dataset.kind=kind||'';$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#scrim').classList.add('on');$('#sheet').scrollTop=0}
@@ -423,7 +427,7 @@ function startRest(){const n=S.settings.rest;if(!n)return;rest={end:Date.now()+n
 function stopRest(){rest=null;$('#rest').classList.remove('on')}
 let actx=null;function beep(){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.35)}catch(e){}}
 function tick(){const el=$('#elapsed');if(el&&S.active){const s=Math.floor((Date.now()-S.active.start)/1000);el.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' elapsed'}
-  if(rest){const left=Math.ceil((rest.end-Date.now())/1000);if(left<=0){beep();stopRest();toast('Rest over. Next set.')}else{$('#rest').classList.add('on');$('#restt').textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');$('#restbar').style.width=Math.max(0,100-left/rest.total*100)+'%'}}}
+  if(rest){const left=Math.ceil((rest.end-Date.now())/1000);if(left<=0){beep();haptic();stopRest();toast('Rest over. Next set.')}else{$('#rest').classList.add('on');$('#restt').textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');$('#restbar').style.width=Math.max(0,100-left/rest.total*100)+'%'}}}
 setInterval(tick,1000);
 
 /* ================= import / export ================= */
@@ -450,9 +454,38 @@ function importHevy(text){const rows=parseCSV(text);if(rows.length<2){toast('Tha
   const list=Object.values(map).filter(w=>w.exercises.length);if(!list.length){toast('No new workouts found in that file.');return}
   S.workouts.push(...list);recomputePRs(S.workouts);saveAll();closeSheet();go('history');toast('Imported '+list.length+' workout'+(list.length>1?'s':'')+' from Hevy.')}
 
+/* ================= haptics and gestures ================= */
+/* iPhone browsers have no vibration API. Toggling a hidden iOS "switch" checkbox makes the phone give its small system tick, which is the only way a web app can get haptics there. */
+let hapEl=null,lastTabDrag=0;
+function haptic(){try{if(navigator.vibrate){navigator.vibrate(8);return}
+  if(!hapEl){const l=document.createElement('label');l.setAttribute('aria-hidden','true');l.style.cssText='position:fixed;left:-200px;top:0;opacity:0;pointer-events:none';const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');i.tabIndex=-1;l.appendChild(i);document.body.appendChild(l);hapEl=l}
+  hapEl.click()}catch(e){}}
+function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
+  /* drag along the tab bar: the glass highlight follows your finger and ticks as it crosses each tab */
+  let drag=null;const slot=()=>{const r=nav.getBoundingClientRect();return{r,w:(r.width-12)/5}},idxAt=x=>{const{r,w}=slot();return Math.max(0,Math.min(4,Math.floor((x-r.left-6)/w)))};
+  nav.addEventListener('touchstart',e=>{const t=e.touches[0];drag={x0:t.clientX,moved:false,idx:idxAt(t.clientX)}},{passive:true});
+  nav.addEventListener('touchmove',e=>{if(!drag)return;const t=e.touches[0];if(!drag.moved&&Math.abs(t.clientX-drag.x0)<8)return;drag.moved=true;e.preventDefault();
+    const{r,w}=slot(),ind=nav.querySelector('.ind'),x=Math.max(0,Math.min(r.width-12-w,t.clientX-r.left-6-w/2));ind.style.transition='none';ind.style.transform='translateX('+x+'px) scale(1.1,1.2)';
+    const i=idxAt(t.clientX);if(i!==drag.idx){drag.idx=i;haptic();nav.querySelectorAll('button').forEach((b,j)=>b.classList.toggle('on',j===i))}},{passive:false});
+  const endDrag=()=>{if(!drag)return;const d=drag;drag=null;nav.querySelector('.ind').style.transition='';if(d.moved){lastTabDrag=Date.now();if(TABS[d.idx][0]!==tab)go(TABS[d.idx][0]);else renderNav()}};
+  nav.addEventListener('touchend',endDrag);nav.addEventListener('touchcancel',endDrag);
+  /* swipe left or right anywhere on a screen to move between tabs */
+  let sw=null;
+  view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input,select')?null:{x:t.clientX,y:t.clientY}},{passive:true});
+  view.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;sw=null;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.8)return;
+    const n=TABS.findIndex(x=>x[0]===tab)+(dx<0?1:-1);if(n<0||n>4)return;haptic();go(TABS[n][0])},{passive:true});
+  /* pull a sheet down to dismiss it */
+  let sd=null;
+  sh.addEventListener('touchstart',e=>{sd=sh.scrollTop<=0&&!e.target.closest('input,select')?{y:e.touches[0].clientY,dy:0}:null},{passive:true});
+  sh.addEventListener('touchmove',e=>{if(!sd)return;sd.dy=e.touches[0].clientY-sd.y;if(sd.dy>0){sh.style.transition='none';sh.style.transform='translateY('+sd.dy+'px)'}},{passive:true});
+  const endSheet=()=>{if(!sd)return;const dy=sd.dy;sd=null;sh.style.transition='transform .25s';sh.style.transform='';if(dy>110){haptic();closeSheet()}};
+  sh.addEventListener('touchend',endSheet);sh.addEventListener('touchcancel',endSheet)}
+
 /* ================= events ================= */
 document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(ev.target.id==='scrim'){closeSheet();return}if(!b)return;const a=b.dataset.a,v=b.dataset.v,x=+b.dataset.x,s=+b.dataset.s;
   if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
+  if(a==='tab'&&Date.now()-lastTabDrag<450)return;
+  haptic();
   switch(a){
   case 'tab':go(v);break;
   case 'settings':settingsSheet();break;
@@ -498,7 +531,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t.id!=='imp-json'&&
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet()});
 
 /* ================= boot ================= */
-localLoad();buildDemo();buildNav();go(tab);initCloud();
+localLoad();buildDemo();buildNav();go(tab);initGestures();initCloud();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
