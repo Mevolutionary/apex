@@ -27,12 +27,29 @@ Open that address in Safari, tap Share, then "Add to Home Screen". Open Apex fro
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    function owner() {
+      return request.auth != null && request.auth.uid == "PASTE_OWNER_USER_ID";
+    }
+    function invited() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/invites/$(request.auth.token.email));
+    }
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if request.auth != null && request.auth.uid == uid && (owner() || invited());
+    }
+    match /invites/{email} {
+      allow get: if request.auth != null && request.auth.token.email == email;
+      allow read, write: if owner();
     }
   }
 }
 ```
+
+Replace PASTE_OWNER_USER_ID with the owner's user ID, shown at the bottom of Settings in the app.
+With these rules only the owner and invited, email-verified addresses can sync. The owner manages the
+list from Settings > Invite friends. Progress photos are encrypted in the app before upload, so they
+cannot be viewed from the Firebase console.
 
 ## Updating
 

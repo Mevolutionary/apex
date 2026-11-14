@@ -211,7 +211,12 @@ div.ltile .hx{transform:translate(-50%,-50%) scale(2.6,3.6)}
 #sheet p{color:var(--ink-2);margin:0 0 10px;max-width:65ch}
 .stack{display:flex;flex-direction:column;gap:12px}
 @keyframes rise{from{transform:translateY(70px) scale(.96);opacity:0}}
-#toast{position:fixed;z-index:20;top:calc(env(safe-area-inset-top) + 14px);left:50%;transform:translate(-50%,-80px);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600;transition:transform .3s;max-width:90%}
+#lock{position:fixed;inset:0;z-index:60;display:none;place-items:center;padding:24px;background:radial-gradient(60% 45% at 30% 20%,rgba(92,74,255,.55),transparent 70%),radial-gradient(55% 45% at 80% 85%,rgba(0,160,215,.4),transparent 70%),#060814}
+#lock.on{display:grid}
+.lockbox{width:min(360px,100%);display:flex;flex-direction:column;gap:14px;text-align:center;align-items:stretch}
+.lockbox h2{font-size:26px;font-weight:900}.lockbox p{margin:0}
+#lock-pin{text-align:center;font-size:22px;letter-spacing:6px}
+#toast{position:fixed;z-index:70;top:calc(env(safe-area-inset-top) + 14px);left:50%;transform:translate(-50%,-80px);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600;transition:transform .3s;max-width:90%}
 #toast.on{transform:translate(-50%,0)}
 .plates{display:flex;align-items:center;justify-content:center;gap:3px;height:120px;margin:6px 0}
 .plates .barr{width:46px;height:10px;background:#aeb6c6;border-radius:3px}
@@ -230,6 +235,7 @@ svg.chart{width:100%;height:auto;display:block}
 <div id="lscrim"></div>
 <div id="launch" class="glass" role="dialog" aria-label="All features"><div id="linner"></div></div>
 <div id="scrim"><div id="sheet" class="glass" role="dialog" aria-modal="true"></div></div>
+<div id="lock" role="dialog" aria-modal="true" aria-label="App locked"></div>
 <div id="toast" class="glass" role="status"></div>
 
 <script src="config.js"></script>
@@ -251,7 +257,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.18';
+const LB=2.20462, DAY=864e5, VERSION='0.19';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -289,6 +295,8 @@ function buildDemo(){const now=Date.now(),names=['Push','Legs','Pull'],plan=[['b
 /* ================= storage ================= */
 /* Everything is kept on this device (localStorage). If config.js holds a Firebase config and you sign in, the same data is mirrored to your own Firestore database under users/<your id>/data. */
 const LS='apex.v1',CFG=(window.APEX_CONFIG||{}).firebase||null;
+let blockReason='',isOwner=false,vaultKey=null;
+const lsGet=k=>{try{return localStorage.getItem(LS+k)}catch(e){return null}},lsSet=(k,v)=>{try{localStorage.setItem(LS+k,v)}catch(e){}},lsDel=k=>{try{localStorage.removeItem(LS+k)}catch(e){}};
 let fb=null,fbUser=null,cloudReady=false,cloudState=CFG?'connecting':'off',knownMonths=new Set(),pulling=false;
 const pend={},busy={};
 function localSave(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){toast('This device is out of storage space. Export a backup.')}}
@@ -308,7 +316,7 @@ async function initCloud(){if(!CFG){cloudState='off';return}
   try{const v='https://www.gstatic.com/firebasejs/10.12.2/';
     const [A,U,F]=await Promise.all([import(v+'firebase-app.js'),import(v+'firebase-auth.js'),import(v+'firebase-firestore.js')]);
     const app=A.initializeApp(CFG);fb={auth:U.getAuth(app),db:F.getFirestore(app),U,F};
-    U.onAuthStateChanged(fb.auth,u=>{fbUser=u;cloudReady=false;if(u)pull();else{cloudState='signedout';refreshSettings();if(tab==='home')render();maybeAskLogin()}})
+    U.onAuthStateChanged(fb.auth,u=>{fbUser=u;cloudReady=false;isOwner=false;vaultKey=null;if(u){vaultLocal(u.uid).then(k=>{if(k&&!vaultKey&&fbUser&&fbUser.uid===u.uid){vaultKey=k;phFlush();refreshSettings()}});pull()}else{cloudState='signedout';refreshSettings();if(tab==='home')render();maybeAskLogin()}})
   }catch(e){cloudState='error';refreshSettings()}}
 async function pull(){if(!fb||!fbUser||pulling)return;if(Object.keys(pend).length||Object.values(busy).some(Boolean))return;pulling=true;cloudState='connecting';
   try{const snap=await fb.F.getDocs(fb.F.collection(fb.db,'users',fbUser.uid,'data'));
@@ -324,18 +332,78 @@ async function pull(){if(!fb||!fbUser||pulling)return;if(Object.keys(pend).lengt
     }else if(any){const typing=document.activeElement&&/INPUT|SELECT/.test(document.activeElement.tagName);
       S={settings:Object.assign({unit:'kg',sex:'male',rest:120},C.settings||{}),custom:C.custom,routines:C.routines,weights:C.weights,workouts:C.workouts.sort((a,b)=>a.start-b.start),active:C.active};cloudReady=true;localSave();try{localStorage.removeItem(LS+'.unsynced')}catch(e){}migrate();if(!typing)render()}
     else{cloudReady=true;if(hasLocal())saveAll()}
-    cloudState='synced';phFlush();if(tab==='home')render()
-  }catch(e){cloudState='error'}
+    cloudState='synced';vaultSync();checkOwner();phFlush();if(tab==='home')render()
+  }catch(e){if(e&&e.code==='permission-denied'){cloudState='blocked';blockReason=fbUser&&fbUser.emailVerified?'invite':'verify';if(tab==='home')render()}else cloudState='error'}
   pulling=false;refreshSettings()}
 function loginSheet(){openSheet(`<h2>Sign in to keep your training</h2><p>Right now everything is stored only on this device. Sign in and it backs up automatically and stays in step across your phone and computer. New here? Enter an email and a password, then choose Create account.</p>
   <div class="stack"><input type="text" inputmode="email" autocomplete="email" autocapitalize="off" id="au-email" placeholder="Email"><input type="password" autocomplete="current-password" id="au-pass" placeholder="Password">
-  <div class="row"><button class="btn" style="flex:1" data-a="signup">Create account</button><button class="btn primary" style="flex:1" data-a="signin">Sign in</button></div><button class="btn block" data-a="close">Not now</button></div>`,'login')}
+  <div class="row"><button class="btn" style="flex:1" data-a="signup">Create account</button><button class="btn primary" style="flex:1" data-a="signin">Sign in</button></div><div class="row between"><button class="info" data-a="forgot">Forgot password</button><button class="info" data-a="close">Not now</button></div></div>`,'login')}
 function maybeAskLogin(){try{if(localStorage.getItem(LS+'.loginAsked'))return;localStorage.setItem(LS+'.loginAsked','1')}catch(e){return}
   setTimeout(()=>{if(cloudState==='signedout'&&!S.active&&!$('#scrim').classList.contains('on')&&!L.open)loginSheet()},1400)}
 function refreshSettings(){if($('#scrim').classList.contains('on')&&$('#sheet').dataset.kind==='settings')settingsSheet()}
-const AUTHMSG={'auth/invalid-credential':'Wrong email or password.','auth/wrong-password':'Wrong email or password.','auth/user-not-found':'No account with that email. Use Create account.','auth/email-already-in-use':'That email already has an account. Use Sign in.','auth/weak-password':'Use a password of at least 6 characters.','auth/invalid-email':'That email address does not look right.','auth/network-request-failed':'No connection. Try again when you are online.','auth/operation-not-allowed':'Email sign-in is not switched on in your Firebase project yet.'};
+const AUTHMSG={'auth/too-many-requests':'Too many attempts. Wait a few minutes and try again.','auth/requires-recent-login':'Sign out, sign back in, then try again.','auth/invalid-credential':'Wrong email or password.','auth/wrong-password':'Wrong email or password.','auth/user-not-found':'No account with that email. Use Create account.','auth/email-already-in-use':'That email already has an account. Use Sign in.','auth/weak-password':'Use a password of at least 6 characters.','auth/invalid-email':'That email address does not look right.','auth/network-request-failed':'No connection. Try again when you are online.','auth/operation-not-allowed':'Email sign-in is not switched on in your Firebase project yet.'};
 async function authGo(create){const em=$('#au-email').value.trim(),pw=$('#au-pass').value;if(!em||!pw){toast('Enter your email and a password.');return}
-  try{await (create?fb.U.createUserWithEmailAndPassword:fb.U.signInWithEmailAndPassword)(fb.auth,em,pw);toast(create?'Account created. Sync is on.':'Signed in. Sync is on.');if($('#sheet').dataset.kind==='login')closeSheet()}catch(e){toast(AUTHMSG[e&&e.code]||'Could not sign in. Check your details and try again.')}}
+  try{const cred=await (create?fb.U.createUserWithEmailAndPassword:fb.U.signInWithEmailAndPassword)(fb.auth,em,pw);
+    if(create){try{await fb.U.sendEmailVerification(cred.user)}catch(e){}}
+    toast(create?'Account created. Check your inbox for a verification email.':'Signed in.');if($('#sheet').dataset.kind==='login')closeSheet();
+    vaultOpen(pw).catch(()=>{})}catch(e){toast(AUTHMSG[e&&e.code]||'Could not sign in. Check your details and try again.')}}
+async function forgotPassword(){const em=($('#au-email')||{}).value;if(!em||!em.trim()){toast('Type your email in the box first.');return}
+  try{await fb.U.sendPasswordResetEmail(fb.auth,em.trim())}catch(e){if(e&&e.code==='auth/network-request-failed'){toast('No connection. Try again when you are online.');return}}
+  toast('If that email has an account, a reset link is on its way.')}
+async function verifyCheck(){try{await fbUser.reload();await fbUser.getIdToken(true)}catch(e){}if(fbUser&&!fbUser.emailVerified)toast('Not verified yet. Open the link in the email first.');pull()}
+async function checkOwner(){try{await fb.F.getDocs(fb.F.query(fb.F.collection(fb.db,'invites'),fb.F.limit(1)));isOwner=true}catch(e){isOwner=false}refreshSettings()}
+
+/* ---------- photo key ("vault") ----------
+   Each account has one random AES key for its photos. The cloud only ever holds that key locked with a key stretched from the account password (PBKDF2),
+   so photos can be opened on any device by signing in, but not by anyone who merely has access to the database. */
+const b64=buf=>{let s='';const u=new Uint8Array(buf);for(let i=0;i<u.length;i+=0x8000)s+=String.fromCharCode.apply(null,u.subarray(i,i+0x8000));return btoa(s)},unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+async function kekFrom(password,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(password),'PBKDF2',false,['deriveKey']);return crypto.subtle.deriveKey({name:'PBKDF2',salt,iterations:310000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])}
+async function vaultWrap(password,key){const salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12)),raw=await crypto.subtle.exportKey('raw',key),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},await kekFrom(password,salt),raw);return{v:1,salt:b64(salt),iv:b64(iv),key:b64(ct)}}
+async function vaultUnwrap(password,doc){const raw=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(doc.iv)},await kekFrom(password,unb64(doc.salt)),unb64(doc.key));return crypto.subtle.importKey('raw',raw,'AES-GCM',true,['encrypt','decrypt'])}
+async function vaultLocal(uid){try{return (await idbDo('readonly',s=>s.get(uid),'keys'))||null}catch(e){return null}}
+const vaultRef=uid=>fb.F.doc(fb.db,'users',uid,'keys','vault');
+async function vaultOpen(password){const u=fb.auth.currentUser;if(!u||!window.crypto||!crypto.subtle)return;let doc=null,reach=true;
+  try{const sn=await fb.F.getDoc(vaultRef(u.uid));doc=sn.exists()?sn.data():null}catch(e){reach=false}
+  let key=await vaultLocal(u.uid),rewrap=false;
+  if(reach&&doc){try{key=await vaultUnwrap(password,doc)}catch(e){if(key)rewrap=true;else key=null}}   /* password was reset: a device that still has the key re-locks it with the new password */
+  const fresh=!key;if(fresh)key=await crypto.subtle.generateKey({name:'AES-GCM',length:256},true,['encrypt','decrypt']);
+  await idbDo('readwrite',s=>s.put(key,u.uid),'keys');
+  if(fresh||rewrap||(reach&&!doc)||!reach){const w=await vaultWrap(password,key);let sent=false;if(reach){try{await fb.F.setDoc(vaultRef(u.uid),w);sent=true}catch(e){}}if(!sent)lsSet('.vaultPend.'+u.uid,JSON.stringify(w))}
+  vaultKey=key;S.weights.filter(w=>w.p).forEach(w=>phMark(w.d,true));phFlush();refreshSettings()}
+async function vaultSync(){const u=fbUser;if(!u)return;const k='.vaultPend.'+u.uid,p=lsGet(k);if(!p)return;
+  try{const sn=await fb.F.getDoc(vaultRef(u.uid));if(!sn.exists())await fb.F.setDoc(vaultRef(u.uid),JSON.parse(p));
+    else if(sn.data().key!==JSON.parse(p).key){vaultKey=null;await idbDo('readwrite',s=>s.delete(u.uid),'keys')}   /* another device set the key first: ask for the password again to pick it up */
+    lsDel(k);phFlush();refreshSettings()}catch(e){}}
+async function reauth(pw){await fb.U.reauthenticateWithCredential(fbUser,fb.U.EmailAuthProvider.credential(fbUser.email,pw))}
+async function vaultOn(){const pw=($('#vault-pw')||{}).value;if(!pw){toast('Enter your account password.');return}try{await reauth(pw)}catch(e){toast(AUTHMSG[e&&e.code]||'That password did not match.');return}
+  try{await vaultOpen(pw);toast('Photo encryption is on.')}catch(e){toast('Could not switch on encryption. Try again.')}}
+async function wipeLocal(){S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};for(const k of Object.keys(phCache))delete phCache[k];
+  try{Object.keys(localStorage).filter(k=>k.startsWith(LS)&&k!==LS+'.loginAsked').forEach(k=>localStorage.removeItem(k))}catch(e){}
+  try{await idbDo('readwrite',s=>s.clear())}catch(e){}try{await idbDo('readwrite',s=>s.clear(),'keys')}catch(e){}knownMonths=new Set()}
+async function deleteAccount(){const pw=($('#del-pw')||{}).value;if(!pw){toast('Enter your password to confirm.');return}
+  try{await reauth(pw)}catch(e){toast(AUTHMSG[e&&e.code]||'That password did not match.');return}
+  toast('Deleting…');const F=fb.F,uid=fbUser.uid;
+  try{for(const w of S.weights.filter(w=>w.p))await F.deleteDoc(F.doc(fb.db,'users',uid,'photos',w.d)).catch(()=>{});
+    const sn=await F.getDocs(F.collection(fb.db,'users',uid,'data'));for(const d of sn.docs)await F.deleteDoc(d.ref);await F.deleteDoc(vaultRef(uid)).catch(()=>{})}catch(e){}
+  try{await fb.U.deleteUser(fbUser)}catch(e){toast('Your data was removed but the login could not be deleted. Sign in again and retry.');return}
+  await wipeLocal();closeSheet();go('home');toast('Account and data deleted.')}
+function deleteSheet(){openSheet(`<h2>Delete account</h2><p>This permanently deletes your login and everything stored with it: workouts, weigh-ins, photos, routines. It also clears this device. It cannot be undone, so export a backup first if you want one.</p><div class="stack"><input type="password" autocomplete="current-password" id="del-pw" placeholder="Your password"><div class="row"><button class="btn" style="flex:1" data-a="close">Keep my account</button><button class="btn danger" style="flex:1" data-a="delete-account">Delete forever</button></div></div>`,'delete')}
+async function invitesSheet(){let list=[];try{const sn=await fb.F.getDocs(fb.F.collection(fb.db,'invites'));sn.forEach(d=>list.push(d.id))}catch(e){toast('Could not load the invite list.');return}
+  openSheet(`<h2>Invite friends</h2><p>Only email addresses on this list can sync with your project. A friend signs up in the app with the same address and confirms it from the verification email.</p><div class="stack"><div class="row"><input type="text" inputmode="email" autocapitalize="off" id="inv-email" placeholder="friend@example.com"><button class="btn" data-a="invite-add">Add</button></div>
+  ${list.length?`<div class="list">${list.sort().map(e=>`<div class="row between"><span style="min-width:0;overflow-wrap:anywhere">${esc(e)}</span><button class="btn sm danger" data-a="invite-del" data-v="${esc(e)}">Remove</button></div>`).join('')}</div>`:'<div class="muted small">Nobody invited yet.</div>'}</div>`,'invites')}
+
+/* ---------- app lock (this device only) ---------- */
+const pinGet=()=>{try{return JSON.parse(lsGet('.pin')||'null')}catch(e){return null}};
+async function pinHash(pin,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveBits']);return b64(await crypto.subtle.deriveBits({name:'PBKDF2',salt:unb64(salt),iterations:150000,hash:'SHA-256'},base,256))}
+function lockShow(forgot){const el=$('#lock');el.classList.add('on');el.innerHTML=forgot?`<div class="lockbox"><h2>Forgot your PIN?</h2><p class="muted">The only way back in is to erase this device's copy and remove the PIN. Anything synced to your account stays safe and returns when you sign in. Anything never synced is lost.</p><button class="btn danger block" data-a="lock-erase">Erase this device and remove PIN</button><button class="btn block" data-a="lock-back">Back</button></div>`
+  :`<div class="lockbox"><h2>Apex is locked</h2><p class="muted">Enter your PIN to continue.</p><input type="password" inputmode="numeric" autocomplete="off" id="lock-pin" placeholder="PIN" aria-label="PIN"><button class="btn primary block" data-a="unlock">Unlock</button><button class="info" data-a="lock-forgot">Forgot PIN</button></div>`}
+async function unlock(){const p=pinGet(),i=$('#lock-pin');if(!p||!i)return;if(await pinHash(i.value,p.salt)===p.hash){$('#lock').classList.remove('on');$('#lock').innerHTML=''}else{i.value='';toast('Wrong PIN.')}}
+function pinSheet(){const on=!!pinGet();openSheet(on?`<h2>Turn off app lock</h2><div class="stack"><input type="password" inputmode="numeric" autocomplete="off" id="pin-a" placeholder="Current PIN"><button class="btn block" data-a="pin-off">Turn off</button></div>`
+  :`<h2>Set an app lock</h2><p>Apex will ask for this PIN when it opens and after it has been in the background for a minute. It protects this device only; set it separately on each one.</p><div class="stack"><input type="password" inputmode="numeric" autocomplete="off" id="pin-a" placeholder="PIN, 4 to 8 digits"><input type="password" inputmode="numeric" autocomplete="off" id="pin-b" placeholder="Same PIN again"><button class="btn primary block" data-a="pin-save">Turn on app lock</button></div>`,'pin')}
+async function pinSave(){const a=$('#pin-a').value,b2=$('#pin-b').value;if(!/^\d{4,8}$/.test(a)){toast('Use 4 to 8 digits.');return}if(a!==b2){toast('The two PINs do not match.');return}const salt=b64(crypto.getRandomValues(new Uint8Array(16)));lsSet('.pin',JSON.stringify({salt,hash:await pinHash(a,salt)}));closeSheet();toast('App lock is on.')}
+async function pinOff(){const p=pinGet();if(p&&await pinHash($('#pin-a').value,p.salt)!==p.hash){toast('Wrong PIN.');return}lsDel('.pin');closeSheet();toast('App lock is off.')}
+let hiddenAt=0;
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')hiddenAt=Date.now();else if(pinGet()&&hiddenAt&&Date.now()-hiddenAt>60000&&!$('#lock').classList.contains('on'))lockShow()});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){pull();checkUpdate(false)}});
 window.addEventListener('online',()=>pull());
 
@@ -399,7 +467,7 @@ function home(){const d=V(),ws=weekStart(),wk=d.workouts.filter(w=>w.start>=ws),
   return `<div class="top"><div><div class="sub">${new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})}</div><h1>Apex</h1></div>
     <button class="iconbtn glass" data-a="settings" aria-label="Settings"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button></div>
   ${demoBanner()}
-  ${cloudState==='signedout'?`<button class="btn block" data-a="login">Sign in to sync and back up your training</button>`:''}
+  ${cloudState==='signedout'?`<button class="btn block" data-a="login">Sign in to sync and back up your training</button>`:cloudState==='blocked'?`<button class="btn block" data-a="settings">Finish setting up sync</button>`:''}
   <section class="glass card tap" data-a="tab" data-v="ranks"><div class="row" style="gap:16px">${o?emblem(o.tier,76):emblem(0,76)}<div style="flex:1;min-width:0">
     <div class="small muted">Overall rank <button class="info" data-a="info" data-v="ranks">How ranks work</button></div>
     <div class="num" style="font-size:30px;font-weight:900;line-height:1.1">${o?TIERS[o.tier][0]:'Unranked'}</div>
@@ -509,13 +577,17 @@ function body(){const l=V().weights,tr=trend(l),cur=l[l.length-1],tnow=tr[tr.len
 /* ================= progress photos ================= */
 /* Photos are shrunk on the phone, kept in the browser's IndexedDB, and (when signed in) copied to users/<id>/photos/<date> so they are only downloaded when viewed. */
 let idbP=null;const phCache={};
-function idbOpen(){return idbP||(idbP=new Promise((res,rej)=>{const r=indexedDB.open('apex',1);r.onupgradeneeded=()=>r.result.createObjectStore('photos');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
-async function idbDo(mode,fn){const d=await idbOpen();return new Promise((res,rej)=>{const tx=d.transaction('photos',mode),rq=fn(tx.objectStore('photos'));tx.oncomplete=()=>res(rq&&rq.result);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
+function idbOpen(){return idbP||(idbP=new Promise((res,rej)=>{const r=indexedDB.open('apex',2);r.onupgradeneeded=()=>{for(const n of ['photos','keys'])if(!r.result.objectStoreNames.contains(n))r.result.createObjectStore(n)};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+async function idbDo(mode,fn,store){store=store||'photos';const d=await idbOpen();return new Promise((res,rej)=>{const tx=d.transaction(store,mode),rq=fn(tx.objectStore(store));tx.oncomplete=()=>res(rq&&rq.result);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
 const phPending=()=>{try{return JSON.parse(localStorage.getItem(LS+'.phpend')||'[]')}catch(e){return[]}},phMark=(d,on)=>{try{const s=new Set(phPending());on?s.add(d):s.delete(d);localStorage.setItem(LS+'.phpend',JSON.stringify([...s]))}catch(e){}};
 async function phGet(d){if(phCache[d])return phCache[d];let v=null;try{v=await idbDo('readonly',s=>s.get(d))}catch(e){}
-  if(!v&&cloudReady){try{const sn=await fb.F.getDoc(fb.F.doc(fb.db,'users',fbUser.uid,'photos',d));if(sn.exists()){v=sn.data();idbDo('readwrite',s=>s.put(v,d)).catch(()=>{})}}catch(e){}}
+  if(!v&&cloudReady){try{const sn=await fb.F.getDoc(fb.F.doc(fb.db,'users',fbUser.uid,'photos',d));if(sn.exists()){const x=sn.data();
+      if(x.ct){if(vaultKey){const o=JSON.parse(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(x.iv)},vaultKey,unb64(x.ct))));v={d,img:o.img,th:o.th}}}else if(x.img)v={d,img:x.img,th:x.th};
+      if(v)idbDo('readwrite',s=>s.put(v,d)).catch(()=>{})}}catch(e){}}
   if(v)phCache[d]=v;return v}
-async function phPush(d){if(!cloudReady)return;try{const v=await phGet(d);if(v)await fb.F.setDoc(fb.F.doc(fb.db,'users',fbUser.uid,'photos',d),{d,img:v.img,th:v.th});phMark(d,false)}catch(e){}}
+/* A photo only leaves the device after it has been encrypted with the account's photo key, so the project owner cannot view it. Without the key it waits in the pending list. */
+async function phPush(d){if(!cloudReady||!vaultKey)return;try{const v=await phGet(d);if(v){const iv=crypto.getRandomValues(new Uint8Array(12)),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},vaultKey,new TextEncoder().encode(JSON.stringify({img:v.img,th:v.th})));
+    await fb.F.setDoc(fb.F.doc(fb.db,'users',fbUser.uid,'photos',d),{d,v:2,iv:b64(iv),ct:b64(ct)})}phMark(d,false)}catch(e){}}
 function phFlush(){phPending().forEach(phPush)}
 async function phSave(d,file){const img=await shrink(file,1280,.72),th=await shrink(file,260,.7),v={d,img,th};phCache[d]=v;await idbDo('readwrite',s=>s.put(v,d));phMark(d,true);phPush(d)}
 function phRemove(d){delete phCache[d];phMark(d,false);idbDo('readwrite',s=>s.delete(d)).catch(()=>{});if(cloudReady)fb.F.deleteDoc(fb.F.doc(fb.db,'users',fbUser.uid,'photos',d)).catch(()=>{})}
@@ -568,17 +640,23 @@ function settingsSheet(){
   const sync={off:'<div class="tile small">Your data is saved on this phone. Cloud sync is not set up yet, so export a backup now and then.</div>',
     connecting:'<div class="tile small">Connecting to cloud sync…</div>',
     error:'<div class="tile small">Cloud sync cannot connect right now. Changes are kept on this device and sync when you are back online. <button class="info" data-a="sync-now">Try again</button></div>',
-    signedout:'<div class="tile stack"><div class="small muted">Sign in to sync between your phone and computer. Use the same email and password on each device.</div><input type="text" inputmode="email" autocomplete="email" autocapitalize="off" id="au-email" placeholder="Email"><input type="password" autocomplete="current-password" id="au-pass" placeholder="Password"><div class="row"><button class="btn sm" style="flex:1" data-a="signin">Sign in</button><button class="btn sm" style="flex:1" data-a="signup">Create account</button></div></div>',
-    synced:`<div class="tile small row between"><span>Syncing as ${esc(fbUser&&fbUser.email||'')}</span><button class="btn sm" data-a="signout">Sign out</button></div>`}[cloudState];
+    signedout:'<div class="tile stack"><div class="small muted">Sign in to sync between your phone and computer. Use the same email and password on each device.</div><input type="text" inputmode="email" autocomplete="email" autocapitalize="off" id="au-email" placeholder="Email"><input type="password" autocomplete="current-password" id="au-pass" placeholder="Password"><div class="row"><button class="btn sm" style="flex:1" data-a="signin">Sign in</button><button class="btn sm" style="flex:1" data-a="signup">Create account</button></div><button class="info" data-a="forgot">Forgot password</button></div>',
+    blocked:blockReason==='verify'?`<div class="tile stack"><div class="small">Almost there. Open the verification email sent to ${esc(fbUser&&fbUser.email||'your address')} and tap its link. Until then your data stays on this device.</div><div class="row"><button class="btn sm" style="flex:1" data-a="verify-check">I have verified</button><button class="btn sm" style="flex:1" data-a="verify-resend">Resend email</button></div><button class="info" data-a="signout">Sign out</button></div>`:`<div class="tile stack"><div class="small">${esc(fbUser&&fbUser.email||'This address')} is not on the invite list yet. Ask the person who shared Apex with you to add it. Until then your data stays on this device.</div><div class="row"><button class="btn sm" style="flex:1" data-a="sync-now">Try again</button><button class="btn sm" style="flex:1" data-a="signout">Sign out</button></div></div>`,
+    synced:`<div class="tile small row between"><span style="min-width:0;overflow-wrap:anywhere">Syncing as ${esc(fbUser&&fbUser.email||'')}</span><button class="btn sm" data-a="signout">Sign out</button></div>
+    ${vaultKey?'<div class="tile small">Progress photos are encrypted on this device before upload. Only your password can unlock them.</div>':'<div class="tile stack"><div class="small">Photo encryption is off on this device, so photos are not uploaded yet. Enter your account password to switch it on.</div><div class="row"><input type="password" autocomplete="current-password" id="vault-pw" placeholder="Account password"><button class="btn sm" data-a="vault-on">Turn on</button></div></div>'}
+    ${isOwner?'<button class="btn block" data-a="invites">Invite friends</button>':''}`}[cloudState];
+  const acct=fbUser?`<div class="tile small row between"><span style="min-width:0;overflow-wrap:anywhere">Your user ID<br><span class="muted num">${esc(fbUser.uid)}</span></span><button class="btn sm" data-a="copy-uid">Copy</button></div>`:'';
   openSheet(`<h2>Settings</h2><div class="stack">
   <div class="row between"><span>Units</span><div class="seg"><button data-a="set" data-k="unit" data-v="kg" class="${unit()==='kg'?'on':''}">kg</button><button data-a="set" data-k="unit" data-v="lb" class="${unit()==='lb'?'on':''}">lb</button></div></div>
   <div class="row between"><span>Rank standards</span><div class="seg"><button data-a="set" data-k="sex" data-v="male" class="${S.settings.sex==='male'?'on':''}">Male</button><button data-a="set" data-k="sex" data-v="female" class="${S.settings.sex==='female'?'on':''}">Female</button></div></div>
   <div class="row between"><span>Rest timer</span><div class="seg">${[0,60,90,120,180].map(n=>`<button data-a="set" data-k="rest" data-v="${n}" class="${S.settings.rest===n?'on':''}">${n?n+'s':'Off'}</button>`).join('')}</div></div>
   ${sync}
+  <div class="row between"><span>App lock</span><button class="btn sm" data-a="pin">${pinGet()?'On · change':'Set a PIN'}</button></div>
   <button class="btn block" data-a="export">Export a backup file</button>
   <label class="btn block">Restore from a backup file<input type="file" id="imp-json" accept=".json,application/json" hidden></label>
   <label class="btn block">Import workouts from a Hevy CSV export<input type="file" id="imp-hevy" accept=".csv,text/csv" hidden></label>
   <button class="btn block danger" data-a="wipe">Delete all my data</button>
+  ${acct}${fbUser?'<button class="btn block danger" data-a="delete-sheet">Delete my account</button>':''}
   <div class="small muted" style="text-align:center">Apex ${VERSION} · <button class="info" data-a="check-update">Check for updates</button></div></div>`,'settings')}
 function pickSheet(){const q=pickQuery.trim().toLowerCase();const list=allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q)));
   openSheet(`<h2>Add exercise</h2><div class="stack"><input type="text" id="pick-q" data-i="pickq" value="${esc(pickQuery)}" placeholder="Search exercises">
@@ -727,6 +805,23 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');
   case 'signin':authGo(false);break;
   case 'signup':authGo(true);break;
   case 'signout':fb.U.signOut(fb.auth);toast('Signed out. Your data stays on this device.');break;
+  case 'forgot':forgotPassword();break;
+  case 'verify-check':verifyCheck();break;
+  case 'verify-resend':fb.U.sendEmailVerification(fbUser).then(()=>toast('Verification email sent.')).catch(()=>toast('Could not send it yet. Wait a minute and try again.'));break;
+  case 'vault-on':vaultOn();break;
+  case 'copy-uid':navigator.clipboard.writeText(fbUser.uid).then(()=>toast('User ID copied.')).catch(()=>toast('Could not copy. Select and copy it by hand.'));break;
+  case 'delete-sheet':deleteSheet();break;
+  case 'delete-account':deleteAccount();break;
+  case 'invites':invitesSheet();break;
+  case 'invite-add':{const e=($('#inv-email').value||'').trim().toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){toast('That email address does not look right.');break}fb.F.setDoc(fb.F.doc(fb.db,'invites',e),{added:Date.now()}).then(invitesSheet).catch(()=>toast('Could not add. Check the rules are updated.'));break}
+  case 'invite-del':fb.F.deleteDoc(fb.F.doc(fb.db,'invites',v)).then(invitesSheet).catch(()=>toast('Could not remove.'));break;
+  case 'pin':pinSheet();break;
+  case 'pin-save':pinSave();break;
+  case 'pin-off':pinOff();break;
+  case 'unlock':unlock();break;
+  case 'lock-forgot':lockShow(true);break;
+  case 'lock-back':lockShow();break;
+  case 'lock-erase':wipeLocal().then(()=>{if(fb&&fbUser)fb.U.signOut(fb.auth);$('#lock').classList.remove('on');$('#lock').innerHTML='';go('home');toast('This device was erased and the PIN removed.')});break;
   case 'export':exportBackup();break;
   case 'wipe':confirmSheet('Delete all data?','This removes every workout, weigh-in, progress photo, routine and custom exercise. Export a backup first if you might want it back.','Delete everything',()=>{S.weights.filter(w=>w.p).forEach(w=>phRemove(w.d));S={settings:S.settings,custom:[],routines:[],weights:[],workouts:[],active:null};saveAll();go('home');toast('All data deleted.')});break;
   case 'start':startWorkout();break;
@@ -768,10 +863,10 @@ document.addEventListener('change',ev=>{const t=ev.target;
   if(t.id==='bw-photo'){const f=t.files&&t.files[0],val=parseFloat($('#bw-val').value),d=$('#bw-date').value||ymd(Date.now());if(!f)return;if(!(val>0)){toast('Enter your weight first, then add the photo.');return}
     toast('Saving photo…');phSave(d,f).then(()=>{saveWeigh(val,d,true);toast('Weigh-in and photo saved.')}).catch(()=>{saveWeigh(val,d,false);toast('Weigh-in saved, but the photo could not be read.')});return}
   if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){dismissSheet();launcherClose()}else if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches&&ev.target.matches('div[role=button]')){ev.preventDefault();ev.target.click()}});
+document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lock-pin'){unlock();return}if(ev.key==='Escape'){dismissSheet();launcherClose()}else if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches&&ev.target.matches('div[role=button]')){ev.preventDefault();ev.target.click()}});
 
 /* ================= boot ================= */
-localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();initCloud();
+localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();if(pinGet())lockShow();initCloud();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(location.protocol==='https:')setTimeout(()=>checkUpdate(false),2500);
 </script>
