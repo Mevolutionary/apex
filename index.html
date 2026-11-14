@@ -204,6 +204,7 @@ div.ltile .hx{transform:translate(-50%,-50%) scale(2.6,3.6)}
 #scrim{position:fixed;inset:0;z-index:10;background:rgba(3,4,10,.55);display:none;align-items:flex-end;justify-content:center;box-sizing:border-box;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 14px)}
 #scrim.on{display:flex}
 #sheet{width:min(508px,100%);box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;padding:10px 18px 22px;border-radius:36px;animation:rise .5s cubic-bezier(.16,1,.3,1);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);background:linear-gradient(180deg,rgba(40,44,70,.82),rgba(18,20,36,.9))}
+#sheet{position:relative;z-index:2}
 #sheet .grab{width:40px;height:5px;border-radius:9px;background:rgba(255,255,255,.34);margin:0 auto 14px}
 #sheet>*:last-child{margin-bottom:0}
 #sheet h2{font-size:22px;font-weight:900;margin-bottom:12px}
@@ -250,7 +251,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.17';
+const LB=2.20462, DAY=864e5, VERSION='0.18';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -540,10 +541,24 @@ function sheetMeasure(anim){const sh=$('#sheet'),sc=$('#scrim');let pt=12,pb=14;
   const vh=sc.clientHeight||window.innerHeight||700,top=sh.scrollTop;sh.style.transition='none';sh.style.height='auto';SH.hF=Math.round(vh-pt-pb);SH.hN=Math.min(sh.scrollHeight+2,Math.round(vh*.62),SH.hF);
   const cur=sh.dataset.h;sh.style.height=(cur||SH.hN)+'px';void sh.offsetHeight;sh.style.transition=anim?'height .5s cubic-bezier(.22,1.02,.32,1),transform .4s cubic-bezier(.22,1.02,.32,1)':'none';
   const t=SH.full?SH.hF:SH.hN;sh.style.height=t+'px';sh.dataset.h=t;sh.scrollTop=top}
-function openSheet(html,kind){const sh=$('#sheet'),sc=$('#scrim'),same=sc.classList.contains('on')&&!sc.classList.contains('closing')&&sh.dataset.kind===(kind||'')&&!!kind;
+/* Stacked sheets: opening an explanation or exercise from inside a sheet lays it over the top. The sheet underneath stays visible as a dimmed copy and comes back when the top one is dismissed. */
+const sheetStack=[];let pushMode=false;
+function clearStack(){while(sheetStack.length)sheetStack.pop().ghost.remove()}
+function pushSheet(html,kind){const sh=$('#sheet'),sc=$('#scrim'),r=sh.getBoundingClientRect(),g=sh.cloneNode(true),top=sh.scrollTop;
+  g.querySelectorAll('[id]:not(linearGradient)').forEach(e=>e.removeAttribute('id'));g.setAttribute('aria-hidden','true');
+  g.style.cssText+=';position:fixed;z-index:1;left:'+r.left+'px;top:'+r.top+'px;width:'+r.width+'px;height:'+r.height+'px;margin:0;animation:none;pointer-events:none;transform-origin:50% 0;transition:transform .5s cubic-bezier(.22,1,.32,1),filter .5s';
+  sc.appendChild(g);g.scrollTop=top;sheetStack.push({html:sh.innerHTML,kind:sh.dataset.kind,full:SH.full,top,ghost:g});
+  requestAnimationFrame(()=>{g.style.transform='scale(.93) translateY(-10px)';g.style.filter='brightness(.55)'});
+  SH.full=false;sh.dataset.h='';sh.dataset.kind=kind||'';sh.innerHTML='<div class="grab"></div>'+withTicks(html);sh.scrollTop=0;sh.style.transform='';sh.style.opacity='';
+  sh.style.animation='none';void sh.offsetWidth;sh.style.animation='';sheetMeasure(false)}
+function dismissSheet(){if(!sheetStack.length){closeSheet();return}const st=sheetStack.pop(),sh=$('#sheet');
+  sh.style.transition='transform .3s cubic-bezier(.4,0,1,1),opacity .26s';sh.style.transform='translateY(70px) scale(.97)';sh.style.opacity='0';st.ghost.style.transform='';st.ghost.style.filter='';
+  setTimeout(()=>{sh.style.transition='none';sh.style.animation='none';sh.style.opacity='';sh.style.transform='';sh.dataset.kind=st.kind;sh.innerHTML=st.html;SH.full=st.full;sh.dataset.h='';sheetMeasure(false);sh.scrollTop=st.top;st.ghost.remove()},300)}
+function openSheet(html,kind){if(pushMode){pushMode=false;const sc0=$('#scrim');if(sc0.classList.contains('on')&&!sc0.classList.contains('closing')){pushSheet(html,kind);return}}
+  clearStack();const sh=$('#sheet'),sc=$('#scrim'),same=sc.classList.contains('on')&&!sc.classList.contains('closing')&&sh.dataset.kind===(kind||'')&&!!kind;
   clearTimeout(SH.timer);sc.classList.remove('closing');if(!same){SH.full=false;sh.dataset.h=''}
   sh.dataset.kind=kind||'';sh.innerHTML='<div class="grab"></div>'+withTicks(html);sh.style.transform='';sc.classList.add('on');if(!same)sh.scrollTop=0;sheetMeasure(same)}
-function closeSheet(){const sc=$('#scrim');confirmCb=null;if(!sc.classList.contains('on')||sc.classList.contains('closing'))return;sc.classList.add('closing');clearTimeout(SH.timer);SH.timer=setTimeout(()=>{sc.classList.remove('on','closing');SH.full=false;$('#sheet').dataset.h=''},290)}
+function closeSheet(){const sc=$('#scrim');confirmCb=null;clearStack();if(!sc.classList.contains('on')||sc.classList.contains('closing'))return;sc.classList.add('closing');clearTimeout(SH.timer);SH.timer=setTimeout(()=>{sc.classList.remove('on','closing');SH.full=false;const s2=$('#sheet');s2.dataset.h='';s2.style.animation='';s2.style.opacity=''},290)}
 function confirmSheet(title,msg,label,cb){confirmCb=cb;openSheet(`<h2>${title}</h2><p>${msg}</p><div class="row"><button class="btn" style="flex:1" data-a="close">Keep</button><button class="btn danger" style="flex:1" data-a="confirm">${label}</button></div>`)}
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),3200)}
 const INFO={
@@ -683,17 +698,17 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
     e.preventDefault();sd.dy=dy;const hh=sd.h0-dy;sh.style.transition='none';
     if(hh>=SH.hN){sh.style.height=Math.min(SH.hF,hh)+'px';sh.style.transform=''}else{sh.style.height=SH.hN+'px';sh.style.transform='translateY('+(SH.hN-hh)+'px)'}},{passive:false});
   const endSheet=()=>{if(!sd)return;const d=sd;sd=null;if(!d.on)return;const hh=d.h0-d.dy;
-    if(hh<SH.hN-90){haptic();closeSheet();return}
+    if(hh<SH.hN-90){haptic();dismissSheet();return}
     SH.full=d.h0<SH.hF?d.dy<-60:d.dy<60;if(SH.hF-SH.hN<24)SH.full=false;
     sh.style.transition='height .5s cubic-bezier(.22,1.02,.32,1),transform .4s cubic-bezier(.22,1.02,.32,1)';sh.style.transform='';const t=SH.full?SH.hF:SH.hN;sh.style.height=t+'px';sh.dataset.h=t;haptic()};
   sh.addEventListener('touchend',endSheet);sh.addEventListener('touchcancel',endSheet)}
 
 /* ================= events ================= */
 document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');
-  if(ev.target.closest('#bw-photo-lbl')&&ev.target.id!=='bw-photo'&&!(parseFloat($('#bw-val').value)>0)){ev.preventDefault();toast('Enter your weight first, then add the photo.');return}if(ev.target.id==='scrim'){closeSheet();return}if(ev.target.id==='lscrim'){launcherClose();return}if(!b)return;const a=b.dataset.a,v=b.dataset.v,x=+b.dataset.x,s=+b.dataset.s;
+  if(ev.target.closest('#bw-photo-lbl')&&ev.target.id!=='bw-photo'&&!(parseFloat($('#bw-val').value)>0)){ev.preventDefault();toast('Enter your weight first, then add the photo.');return}if(ev.target.id==='scrim'){dismissSheet();return}if(ev.target.id==='lscrim'){launcherClose();return}if(!b)return;const a=b.dataset.a,v=b.dataset.v,x=+b.dataset.x,s=+b.dataset.s;
   if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
   if((a==='open'||a==='launcher')&&b.closest('#nav')&&Date.now()-lastTabDrag<450)return;
-  haptic();
+  haptic();pushMode=(a==='info'||a==='ex')&&!!b.closest('#sheet');
   switch(a){
   case 'tab':go(v);break;
   case 'open':openItem(v);break;
@@ -705,7 +720,7 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');
     S.settings.dock=Object.keys(ITEMS).filter(k=>d.includes(k));save('settings');renderNav();launcherRefresh();break}
   case 'settings':settingsSheet();break;
   case 'info':openSheet(INFO[v]);break;
-  case 'close':closeSheet();break;
+  case 'close':dismissSheet();break;
   case 'confirm':{const cb=confirmCb;closeSheet();cb&&cb();break}
   case 'set':S.settings[b.dataset.k]=b.dataset.k==='rest'?+v:v;save('settings');render();settingsSheet();break;
   case 'sync-now':fb?pull():initCloud();break;
@@ -753,7 +768,7 @@ document.addEventListener('change',ev=>{const t=ev.target;
   if(t.id==='bw-photo'){const f=t.files&&t.files[0],val=parseFloat($('#bw-val').value),d=$('#bw-date').value||ymd(Date.now());if(!f)return;if(!(val>0)){toast('Enter your weight first, then add the photo.');return}
     toast('Saving photo…');phSave(d,f).then(()=>{saveWeigh(val,d,true);toast('Weigh-in and photo saved.')}).catch(()=>{saveWeigh(val,d,false);toast('Weigh-in saved, but the photo could not be read.')});return}
   if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
-document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){closeSheet();launcherClose()}else if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches&&ev.target.matches('div[role=button]')){ev.preventDefault();ev.target.click()}});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){dismissSheet();launcherClose()}else if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches&&ev.target.matches('div[role=button]')){ev.preventDefault();ev.target.click()}});
 
 /* ================= boot ================= */
 localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();initCloud();
