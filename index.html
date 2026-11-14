@@ -160,9 +160,12 @@ nav .grab:active{transform:translateX(-50%)}
 .sets input{height:40px;min-height:40px;padding:0 4px;text-align:center;border-radius:12px;font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums}
 .hx{position:absolute;left:50%;top:50%;margin:0;transform:translate(-50%,-50%) scale(2.4);opacity:.011;z-index:3;cursor:pointer}
 .check .hx{transform:translate(-50%,-50%) scale(1.4)}
-.check,nav .di{overflow:hidden}
+.check,nav .di,div.btn,div.ltile,div.chip{overflow:hidden}
+div.btn,div.ltile,div.chip{position:relative;cursor:pointer;-webkit-user-select:none;user-select:none}
+div.chip{flex:none}
+div.btn .hx{transform:translate(-50%,-50%) scale(9,2.6)}
+div.ltile .hx{transform:translate(-50%,-50%) scale(2.6,3.6)}
 .hapt{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.labbox{position:relative;flex:none;width:92px;height:52px;display:grid;place-items:center;border:1px dashed rgba(255,255,255,.4);border-radius:14px}
 .check{position:relative;cursor:pointer;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;justify-self:center}
 .check svg{width:18px;height:18px;stroke:var(--ink-3);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
 .check.on{background:var(--good);border-color:var(--good)}.check.on svg{stroke:#06281a}
@@ -230,7 +233,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.11';
+const LB=2.20462, DAY=864e5, VERSION='0.12';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -331,6 +334,8 @@ const ITEMS={home:{label:'Home',kind:'screen'},train:{label:'Train',kind:'screen
 const SCREENS=Object.keys(ITEMS).filter(k=>ITEMS[k].kind==='screen'),DEFAULT_DOCK=['home','train','history','ranks','body'];
 let dockEdit=false,navDragging=false;
 /* An invisible iOS switch laid over a control. A real finger tap on a switch is the one case where iOS still gives web pages a haptic tick. */
+/* withTicks rewrites buttons in a screen's markup into tappable blocks that carry the hidden switch. */
+const withTicks=html=>html.replace(/<button (class="(?:btn|ltile|chip)[\s\S]*?)>([\s\S]*?)<\/button>/g,(m,a,b)=>`<div role="button" tabindex="0" ${a}>${b}${HX}</div>`);
 const HX='<input type="checkbox" switch class="hx" tabindex="-1" aria-hidden="true">';
 function dock(){const d=(S.settings.dock||DEFAULT_DOCK).filter(id=>ITEMS[id]&&ITEMS[id].kind!=='soon');return d.length>=2?d.slice(0,5):DEFAULT_DOCK}
 const swipeOrder=()=>{const d=dock().filter(id=>ITEMS[id].kind==='screen');return d.includes(tab)?d:SCREENS};
@@ -344,8 +349,8 @@ function launcherRender(){const d=dock(),tile=id=>{const it=ITEMS[id],pinned=d.i
   const inner=$('#linner'),el=$('#launch');L.dockH=$('#nav').offsetHeight||64;
   if(el.style.display!=='block'){el.style.transition='none';el.style.height=L.dockH+'px';el.style.display='block'}
   inner.style.height='auto';
-  inner.innerHTML=`<div class="grabline"></div><div class="row between"><h2>${dockEdit?'Choose your dock':'All features'}</h2><button class="btn sm" data-a="dock-edit">${dockEdit?'Done':'Edit dock'}</button></div>
-  <p class="small muted">${dockEdit?'Tap to add or remove. The dock holds 2 to 5 items.':'Tap one to open it. Pull up for full screen, down to close.'}</p><div class="lgrid">${Object.keys(ITEMS).map(tile).join('')}</div>`;
+  inner.innerHTML=withTicks(`<div class="grabline"></div><div class="row between"><h2>${dockEdit?'Choose your dock':'All features'}</h2><button class="btn sm" data-a="dock-edit">${dockEdit?'Done':'Edit dock'}</button></div>
+  <p class="small muted">${dockEdit?'Tap to add or remove. The dock holds 2 to 5 items.':'Tap one to open it. Pull up for full screen, down to close.'}</p><div class="lgrid">${Object.keys(ITEMS).map(tile).join('')}</div>`);
   L.H=Math.max(L.dockH+1,Math.min(inner.scrollHeight,Math.round((window.innerHeight||700)*.76)));inner.style.height=L.H+'px';
   let top=59;try{top=parseFloat(getComputedStyle($('#scrim')).paddingTop)||59}catch(e){}
   let bottom=0;try{bottom=$('#nav').getBoundingClientRect().bottom}catch(e){}L.HF=Math.max(L.H,Math.round((bottom||((window.innerHeight||700)-14))-top))}
@@ -441,7 +446,7 @@ function body(){const l=V().weights,tr=trend(l),cur=l[l.length-1],tnow=tr[tr.len
   <section class="glass card"><h2>Log a weigh-in</h2><div class="row" style="align-items:flex-end"><label class="f" style="flex:1">Weight (${unit()})<input type="number" inputmode="decimal" step="any" id="bw-val" placeholder="${cur?disp(cur.kg):'0'}"></label><label class="f" style="flex:1">Date<input type="date" id="bw-date" value="${ymd(Date.now())}" max="${ymd(Date.now())}"></label></div><button class="btn primary block" style="margin-top:12px" data-a="add-weight">Save weigh-in</button></section>
   ${isEmpty()||!l.length?'':`<section class="glass card"><h2>Entries</h2><div class="list">${l.slice().reverse().slice(0,30).map(w=>`<div class="row between"><span>${niceDate(w.d+'T12:00')}</span><div class="row"><span class="num" style="font-weight:700">${disp(w.kg)} ${unit()}</span><button class="btn sm danger" data-a="del-weight" data-v="${w.d}" aria-label="Delete weigh-in from ${w.d}">Delete</button></div></div>`).join('')}</div></section>`}`}
 
-function render(){renderNav();const v=$('#view');v.innerHTML=({home,train,history,ranks,body})[tab]();tick()}
+function render(){renderNav();const v=$('#view');v.innerHTML=withTicks(({home,train,history,ranks,body})[tab]());tick()}
 function go(t){const ix=k=>SCREENS.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
   /* leave a copy of the old screen behind for a moment so it can fade and slide away while the new one arrives */
   try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),300)}}catch(e){}
@@ -456,7 +461,7 @@ function sheetMeasure(anim){const sh=$('#sheet'),sc=$('#scrim');let pt=12,pb=14;
   const t=SH.full?SH.hF:SH.hN;sh.style.height=t+'px';sh.dataset.h=t;sh.scrollTop=top}
 function openSheet(html,kind){const sh=$('#sheet'),sc=$('#scrim'),same=sc.classList.contains('on')&&!sc.classList.contains('closing')&&sh.dataset.kind===(kind||'')&&!!kind;
   clearTimeout(SH.timer);sc.classList.remove('closing');if(!same){SH.full=false;sh.dataset.h=''}
-  sh.dataset.kind=kind||'';sh.innerHTML='<div class="grab"></div>'+html;sh.style.transform='';sc.classList.add('on');if(!same)sh.scrollTop=0;sheetMeasure(same)}
+  sh.dataset.kind=kind||'';sh.innerHTML='<div class="grab"></div>'+withTicks(html);sh.style.transform='';sc.classList.add('on');if(!same)sh.scrollTop=0;sheetMeasure(same)}
 function closeSheet(){const sc=$('#scrim');confirmCb=null;if(!sc.classList.contains('on')||sc.classList.contains('closing'))return;sc.classList.add('closing');clearTimeout(SH.timer);SH.timer=setTimeout(()=>{sc.classList.remove('on','closing');SH.full=false;$('#sheet').dataset.h=''},290)}
 function confirmSheet(title,msg,label,cb){confirmCb=cb;openSheet(`<h2>${title}</h2><p>${msg}</p><div class="row"><button class="btn" style="flex:1" data-a="close">Keep</button><button class="btn danger" style="flex:1" data-a="confirm">${label}</button></div>`)}
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),3200)}
@@ -474,24 +479,11 @@ function settingsSheet(){
   <div class="row between"><span>Rank standards</span><div class="seg"><button data-a="set" data-k="sex" data-v="male" class="${S.settings.sex==='male'?'on':''}">Male</button><button data-a="set" data-k="sex" data-v="female" class="${S.settings.sex==='female'?'on':''}">Female</button></div></div>
   <div class="row between"><span>Rest timer</span><div class="seg">${[0,60,90,120,180].map(n=>`<button data-a="set" data-k="rest" data-v="${n}" class="${S.settings.rest===n?'on':''}">${n?n+'s':'Off'}</button>`).join('')}</div></div>
   ${sync}
-  <div class="tile small hapt"><span>Haptics test. Helps work out which hidden switches your iPhone will tick for.</span><button class="btn sm" data-a="hap-lab">Open</button></div>
   <button class="btn block" data-a="export">Export a backup file</button>
   <label class="btn block">Restore from a backup file<input type="file" id="imp-json" accept=".json,application/json" hidden></label>
   <label class="btn block">Import workouts from a Hevy CSV export<input type="file" id="imp-hevy" accept=".csv,text/csv" hidden></label>
   <button class="btn block danger" data-a="wipe">Delete all my data</button>
   <div class="small muted" style="text-align:center">Apex ${VERSION} · <button class="info" data-a="check-update">Check for updates</button></div></div>`,'settings')}
-/* Temporary diagnostic: each row hides or alters a real switch in one specific way, to find which change stops iOS giving the tick. */
-function hapLab(){const sw=(extra,attrs)=>`<input type="checkbox" switch class="lab" ${attrs||''} style="${extra||''}">`,
-  rows=[['A','Plain switch (should tick)',sw()],
-        ['B','Nearly invisible',sw('opacity:.011')],
-        ['C','Enlarged 2.4x',sw('transform:scale(2.4)')],
-        ['D','Inside a clipped box',`<span style="display:grid;place-items:center;width:100%;height:100%;overflow:hidden;border-radius:999px">${sw()}</span>`],
-        ['E','Hidden from accessibility',sw('','tabindex="-1" aria-hidden="true"')],
-        ['F','Inside a no-scroll zone',`<span style="display:grid;place-items:center;width:100%;height:100%;touch-action:none;-webkit-user-select:none;user-select:none">${sw()}</span>`],
-        ['G','Replaced the moment it is tapped',sw('','data-swap="1"')],
-        ['H','Exactly as used on the dock',`<span style="position:relative;display:block;width:100%;height:100%;overflow:hidden;border-radius:999px;touch-action:none">${HX}</span>`],
-        ['I','Fully invisible, stretched',sw('position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0')]];
-  openSheet(`<h2>Haptics test</h2><p>Tap inside each outlined box, one at a time. Tell me the letters where you feel a tick. The count shows the tap registered.</p><div class="list">${rows.map(r=>`<div class="row between"><span><b>${r[0]}</b> · ${r[1]} <span class="muted num" data-count="${r[0]}">0</span></span><span class="labbox" data-row="${r[0]}">${r[2]}</span></div>`).join('')}</div>`,'lab')}
 function pickSheet(){const q=pickQuery.trim().toLowerCase();const list=allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q)));
   openSheet(`<h2>Add exercise</h2><div class="stack"><input type="text" id="pick-q" data-i="pickq" value="${esc(pickQuery)}" placeholder="Search exercises">
   <div class="row" style="overflow-x:auto;padding-bottom:4px">${['All',...MUSCLES].map(m=>`<button class="chip ${pickFilter===m?'on':''}" data-a="pick-filter" data-v="${m}">${m}</button>`).join('')}</div>
@@ -611,7 +603,6 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(
   case 'open':openItem(v);break;
   case 'launcher':launcherOpen();break;
   case 'check-update':checkUpdate(true);break;
-  case 'hap-lab':hapLab();break;
   case 'apply-update':applyUpdate();break;
   case 'dock-edit':dockEdit=!dockEdit;launcherRefresh();break;
   case 'pin':{let d=dock().slice();if(d.includes(v)){if(d.length<=2){toast('Keep at least 2 items in the dock.');break}d=d.filter(x=>x!==v)}else{if(d.length>=5){toast('The dock is full. Remove one first.');break}d.push(v)}
@@ -655,7 +646,7 @@ document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(!i)ret
   else if(i==='wname'){S.active.name=t.value;save('active')}
   else if(i==='pickq'){pickQuery=t.value;const q=pickQuery.trim().toLowerCase();$('#pick-list').innerHTML=pickRows(allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q))))}
   else if(i==='plates'){const v=parseFloat($('#pl-v').value)||0,b=parseFloat($('#pl-b').value)||0,id=t.id,pos=t.selectionStart;platesSheet(v,b);const el=$('#'+id);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}});
-document.addEventListener('change',ev=>{const t=ev.target;const lb=t.closest&&t.closest('.labbox');if(lb){const c=document.querySelector('[data-count="'+lb.dataset.row+'"]');c.textContent=+c.textContent+1;if(t.dataset.swap){const html=lb.innerHTML;lb.innerHTML=html}return}if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
+document.addEventListener('change',ev=>{const t=ev.target;if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){closeSheet();launcherClose()}else if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches&&ev.target.matches('div[role=button]')){ev.preventDefault();ev.target.click()}});
 
 /* ================= boot ================= */
