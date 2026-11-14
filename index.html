@@ -221,7 +221,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.6';
+const LB=2.20462, DAY=864e5, VERSION='0.7';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -320,13 +320,13 @@ const ITEMS={home:{label:'Home',kind:'screen'},train:{label:'Train',kind:'screen
   plates:{label:'Plates',kind:'tool'},settings:{label:'Settings',kind:'tool'},
   food:{label:'Nutrition',kind:'soon',note:'the nutrition update'},scan:{label:'Food scan',kind:'soon',note:'the nutrition update'},coach:{label:'Coach',kind:'soon',note:'the workout generator update'},studies:{label:'Studies',kind:'soon',note:'a later update'},share:{label:'Share card',kind:'soon',note:'a later update'}};
 const SCREENS=Object.keys(ITEMS).filter(k=>ITEMS[k].kind==='screen'),DEFAULT_DOCK=['home','train','history','ranks','body'];
-let dockEdit=false;
+let dockEdit=false,navDragging=false;
 /* An invisible iOS switch laid over a control. A real finger tap on a switch is the one case where iOS still gives web pages a haptic tick. */
 const HX='<input type="checkbox" switch class="hx" tabindex="-1" aria-hidden="true">';
 function dock(){const d=(S.settings.dock||DEFAULT_DOCK).filter(id=>ITEMS[id]&&ITEMS[id].kind!=='soon');return d.length>=2?d.slice(0,5):DEFAULT_DOCK}
 const swipeOrder=()=>{const d=dock().filter(id=>ITEMS[id].kind==='screen');return d.includes(tab)?d:SCREENS};
 function buildNav(){const d=dock(),nav=$('#nav');nav.dataset.sig=d.join();nav.style.setProperty('--n',d.length);nav.innerHTML='<button class="grab" data-a="launcher" aria-label="Open all features"></button><span class="ind"></span>'+d.map(k=>`<div class="di" role="button" tabindex="0" data-a="open" data-v="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${ITEMS[k].label}${HX}</div>`).join('')}
-function renderNav(){const d=dock(),nav=$('#nav');if(nav.dataset.sig!==d.join())buildNav();const i=d.indexOf(tab);document.querySelectorAll('#nav .di').forEach((b,j)=>{b.classList.toggle('on',i===j);b.setAttribute('aria-current',i===j?'page':'false')});const ind=document.querySelector('#nav .ind');if(ind){ind.style.opacity=i<0?0:1;if(i>=0)ind.style.transform='translateX('+i*100+'%)'}}
+function renderNav(){const d=dock(),nav=$('#nav');if(nav.dataset.sig!==d.join())buildNav();const i=d.indexOf(tab);document.querySelectorAll('#nav .di').forEach((b,j)=>{b.classList.toggle('on',i===j);b.setAttribute('aria-current',i===j?'page':'false')});const ind=document.querySelector('#nav .ind');if(ind&&!navDragging){ind.style.opacity=i<0?0:1;if(i>=0)ind.style.transform='translateX('+i*100+'%)'}}
 function openItem(id){const it=ITEMS[id];if(!it)return;if(it.kind==='soon'){toast(it.label+' arrives in '+it.note+'.');return}launcherClose();if(it.kind==='screen'){closeSheet();go(id)}else if(id==='plates')platesSheet();else if(id==='settings')settingsSheet()}
 /* The launcher is a floating panel that starts at the dock's exact size and shape and grows upward. p is how open it is, 0 to 1, so a finger can drive it directly. */
 const L={open:false,p:0,H:0,dockH:64,timer:null};
@@ -531,12 +531,14 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   let drag=null;const slot=()=>{const r=nav.getBoundingClientRect(),n=dock().length;return{r,n,w:(r.width-12)/n}},idxAt=x=>{const{r,n,w}=slot();return Math.max(0,Math.min(n-1,Math.floor((x-r.left-6)/w)))};
   nav.addEventListener('touchstart',e=>{const t=e.touches[0];drag={x0:t.clientX,y0:t.clientY,mode:null,idx:idxAt(t.clientX)}},{passive:true});
   nav.addEventListener('touchmove',e=>{if(!drag)return;const t=e.touches[0],dx=t.clientX-drag.x0,dy=t.clientY-drag.y0;e.preventDefault();
-    if(!drag.mode){if(dy<-10&&Math.abs(dy)>Math.abs(dx)){drag.mode='up';dockEdit=false;launcherRender()}else{if(Math.abs(dx)<8)return;drag.mode='x'}}
+    if(!drag.mode){if(dy<-10&&Math.abs(dy)>Math.abs(dx)){drag.mode='up';dockEdit=false;launcherRender()}else{if(Math.abs(dx)<8)return;drag.mode='x';navDragging=true}}
     if(drag.mode==='up'){launcherSet(-dy/(L.H-L.dockH),false);return}
     if(drag.mode!=='x')return;
     const{r,n,w}=slot(),ind=nav.querySelector('.ind'),x=Math.max(0,Math.min(r.width-12-w,t.clientX-r.left-6-w/2));ind.style.opacity=1;ind.style.transition='none';ind.style.transform='translateX('+x+'px) scale(1.1,1.2)';
-    const i=idxAt(t.clientX);if(i!==drag.idx||!drag.lit){drag.lit=true;if(i!==drag.idx)haptic();drag.idx=i;nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i))}},{passive:false});
-  const endDrag=()=>{if(!drag)return;const d=drag;drag=null;nav.querySelector('.ind').style.transition='';if(d.mode){lastTabDrag=Date.now()}if(d.mode==='up'){if(L.p>.22){haptic();launcherOpen()}else launcherClose()}if(d.mode==='x'){const id=dock()[d.idx];if(id!==tab)openItem(id);renderNav()}};
+    const i=idxAt(t.clientX);if(i!==drag.idx||!drag.lit){drag.lit=true;if(i!==drag.idx)haptic();drag.idx=i;nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i));
+      /* show the screen under the finger straight away; tools wait until you let go */
+      const id=dock()[i];if(ITEMS[id].kind==='screen'&&id!==tab){go(id);nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i))}}},{passive:false});
+  const endDrag=()=>{if(!drag)return;const d=drag;drag=null;navDragging=false;nav.querySelector('.ind').style.transition='';if(d.mode){lastTabDrag=Date.now()}if(d.mode==='up'){if(L.p>.22){haptic();launcherOpen()}else launcherClose()}if(d.mode==='x'){const id=dock()[d.idx];if(id!==tab)openItem(id);renderNav()}};
   nav.addEventListener('touchend',endDrag);nav.addEventListener('touchcancel',endDrag);
   /* swipe left or right anywhere on a screen to move between docked screens */
   let sw=null;
