@@ -229,7 +229,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.9';
+const LB=2.20462, DAY=864e5, VERSION='0.10';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -337,24 +337,28 @@ function buildNav(){const d=dock(),nav=$('#nav');nav.dataset.sig=d.join();nav.st
 function renderNav(){const d=dock(),nav=$('#nav');if(nav.dataset.sig!==d.join())buildNav();const i=d.indexOf(tab);document.querySelectorAll('#nav .di').forEach((b,j)=>{b.classList.toggle('on',i===j);b.setAttribute('aria-current',i===j?'page':'false')});const ind=document.querySelector('#nav .ind');if(ind&&!navDragging){ind.style.opacity=i<0?0:1;if(i>=0)ind.style.transform='translateX('+i*100+'%)'}}
 function openItem(id){const it=ITEMS[id];if(!it)return;if(it.kind==='soon'){toast(it.label+' arrives in '+it.note+'.');return}launcherClose();if(it.kind==='screen'){closeSheet();go(id)}else if(id==='plates')platesSheet();else if(id==='settings')settingsSheet()}
 /* The launcher is a floating panel that starts at the dock's exact size and shape and grows upward. p is how open it is, 0 to 1, so a finger can drive it directly. */
-const L={open:false,p:0,H:0,dockH:64,timer:null};
+const L={open:false,full:false,p:0,H:0,HF:0,dockH:64,timer:null}; /* p: 0 = dock, 1 = open, 2 = full screen */
 function launcherRender(){const d=dock(),tile=id=>{const it=ITEMS[id],pinned=d.includes(id),soon=it.kind==='soon';
     return `<button class="ltile ${soon?'soon':''} ${dockEdit&&pinned?'pinned':''}" data-a="${dockEdit&&!soon?'pin':'open'}" data-v="${id}"><svg viewBox="0 0 24 24">${ICON[id]}</svg><span>${it.label}</span>${soon?'<em>Soon</em>':dockEdit?`<em>${pinned?'In dock':'Add'}</em>`:''}</button>`};
   const inner=$('#linner'),el=$('#launch');L.dockH=$('#nav').offsetHeight||64;
   if(el.style.display!=='block'){el.style.transition='none';el.style.height=L.dockH+'px';el.style.display='block'}
   inner.style.height='auto';
   inner.innerHTML=`<div class="grabline"></div><div class="row between"><h2>${dockEdit?'Choose your dock':'All features'}</h2><button class="btn sm" data-a="dock-edit">${dockEdit?'Done':'Edit dock'}</button></div>
-  <p class="small muted">${dockEdit?'Tap to add or remove. The dock holds 2 to 5 items.':'Tap one to open it. Pull down to close.'}</p><div class="lgrid">${Object.keys(ITEMS).map(tile).join('')}</div>`;
-  L.H=Math.max(L.dockH+1,Math.min(inner.scrollHeight,Math.round((window.innerHeight||700)*.76)));inner.style.height=L.H+'px'}
-function launcherSet(p,anim){p=Math.max(0,Math.min(1,p));L.p=p;const el=$('#launch'),inner=$('#linner'),nav=$('#nav'),sc=$('#lscrim'),t=anim?'.62s cubic-bezier(.22,1.02,.32,1)':'0s';
+  <p class="small muted">${dockEdit?'Tap to add or remove. The dock holds 2 to 5 items.':'Tap one to open it. Pull up for full screen, down to close.'}</p><div class="lgrid">${Object.keys(ITEMS).map(tile).join('')}</div>`;
+  L.H=Math.max(L.dockH+1,Math.min(inner.scrollHeight,Math.round((window.innerHeight||700)*.76)));inner.style.height=L.H+'px';
+  let top=59;try{top=parseFloat(getComputedStyle($('#scrim')).paddingTop)||59}catch(e){}
+  let bottom=0;try{bottom=$('#nav').getBoundingClientRect().bottom}catch(e){}L.HF=Math.max(L.H,Math.round((bottom||((window.innerHeight||700)-14))-top))}
+const lHeight=p=>p<=1?L.dockH+(L.H-L.dockH)*p:L.H+(L.HF-L.H)*(p-1);
+const lFromH=hh=>hh<=L.H?(hh-L.dockH)/(L.H-L.dockH):1+(L.HF>L.H?(hh-L.H)/(L.HF-L.H):0);
+function launcherSet(q,anim){q=Math.max(0,Math.min(2,q));L.p=q;const p=Math.min(1,q);const el=$('#launch'),inner=$('#linner'),nav=$('#nav'),sc=$('#lscrim'),t=anim?'.62s cubic-bezier(.22,1.02,.32,1)':'0s';
   clearTimeout(L.timer);el.style.display='block';sc.style.display='block';
   el.style.transition='height '+t+',border-radius '+t;inner.style.transition='opacity '+t+',transform '+t;nav.style.transition='opacity '+(anim?'.4s':'0s');sc.style.transition='opacity '+t;
-  el.style.height=(L.dockH+(L.H-L.dockH)*p)+'px';el.style.borderRadius=(L.dockH/2+(36-L.dockH/2)*Math.min(1,p*2.2))+'px';
+  el.style.height=lHeight(q)+'px';inner.style.height=Math.max(L.H,lHeight(q))+'px';el.style.borderRadius=(L.dockH/2+(36-L.dockH/2)*Math.min(1,p*2.2))+'px';
   inner.style.opacity=Math.max(0,Math.min(1,(p-.18)/.5));inner.style.transform='scale('+(.9+.1*p)+')';nav.style.opacity=Math.max(0,1-p*3.2);sc.style.opacity=p;sc.style.pointerEvents=p>.5?'auto':'none';
   if(p===0)L.timer=setTimeout(()=>{if(L.p===0){el.style.display='none';sc.style.display='none'}},anim?640:0)}
-function launcherOpen(){if(L.p===0){dockEdit=false;launcherRender();launcherSet(0,false);void $('#launch').offsetHeight}L.open=true;launcherSet(1,true)}
-function launcherClose(){if(!L.open&&L.p===0)return;L.open=false;launcherSet(0,true)}
-function launcherRefresh(){launcherRender();launcherSet(1,true)}
+function launcherOpen(full){if(L.p===0){dockEdit=false;launcherRender();launcherSet(0,false);void $('#launch').offsetHeight}L.open=true;L.full=!!full&&L.HF-L.H>24;launcherSet(L.full?2:1,true)}
+function launcherClose(){if(!L.open&&L.p===0)return;L.open=false;L.full=false;launcherSet(0,true)}
+function launcherRefresh(){launcherRender();launcherSet(L.full?2:1,true)}
 const demoBanner=()=>isEmpty()?`<div class="banner">You are looking at example data so you can see how each screen works. It disappears as soon as you log your first workout or weigh-in.</div>`:'';
 function weekStart(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()}
 function streak(list){let ws=weekStart(),n=0;const has=s=>list.some(w=>w.start>=s&&w.start<s+7*DAY);if(!has(ws))ws-=7*DAY;while(has(ws)){n++;ws-=7*DAY}return n}
@@ -550,13 +554,13 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   nav.addEventListener('touchstart',e=>{const t=e.touches[0];drag={x0:t.clientX,y0:t.clientY,mode:null,idx:idxAt(t.clientX)}},{passive:true});
   nav.addEventListener('touchmove',e=>{if(!drag)return;const t=e.touches[0],dx=t.clientX-drag.x0,dy=t.clientY-drag.y0;e.preventDefault();
     if(!drag.mode){if(dy<-10&&Math.abs(dy)>Math.abs(dx)){drag.mode='up';dockEdit=false;launcherRender()}else{if(Math.abs(dx)<8)return;drag.mode='x';navDragging=true}}
-    if(drag.mode==='up'){launcherSet(-dy/(L.H-L.dockH),false);return}
+    if(drag.mode==='up'){launcherSet(lFromH(L.dockH-dy),false);return}
     if(drag.mode!=='x')return;
     const{r,n,w}=slot(),ind=nav.querySelector('.ind'),x=Math.max(0,Math.min(r.width-12-w,t.clientX-r.left-6-w/2));ind.style.opacity=1;ind.style.transition='none';ind.style.transform='translateX('+x+'px) scale(1.1,1.2)';
     const i=idxAt(t.clientX);if(i!==drag.idx||!drag.lit){drag.lit=true;if(i!==drag.idx)haptic();drag.idx=i;nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i));
       /* show the screen under the finger straight away; tools wait until you let go */
       const id=dock()[i];if(ITEMS[id].kind==='screen'&&id!==tab){go(id);nav.querySelectorAll('.di').forEach((b,j)=>b.classList.toggle('on',j===i))}}},{passive:false});
-  const endDrag=()=>{if(!drag)return;const d=drag;drag=null;navDragging=false;nav.querySelector('.ind').style.transition='';if(d.mode){lastTabDrag=Date.now()}if(d.mode==='up'){if(L.p>.22){haptic();launcherOpen()}else launcherClose()}if(d.mode==='x'){const id=dock()[d.idx];if(id!==tab)openItem(id);renderNav()}};
+  const endDrag=()=>{if(!drag)return;const d=drag;drag=null;navDragging=false;nav.querySelector('.ind').style.transition='';if(d.mode){lastTabDrag=Date.now()}if(d.mode==='up'){if(L.p>.22){haptic();launcherOpen(L.p>1.3)}else launcherClose()}if(d.mode==='x'){const id=dock()[d.idx];if(id!==tab)openItem(id);renderNav()}};
   nav.addEventListener('touchend',endDrag);nav.addEventListener('touchcancel',endDrag);
   /* swipe left or right anywhere on a screen to move between docked screens */
   let sw=null;
@@ -565,9 +569,11 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
     const o=swipeOrder(),n=o.indexOf(tab)+(dx<0?1:-1);if(n<0||n>=o.length)return;haptic();go(o[n])},{passive:true});
   /* pull the launcher back down into the dock */
   const la=$('#launch');let ld=null;
-  la.addEventListener('touchstart',e=>{ld=L.open&&$('#linner').scrollTop<=0?{y:e.touches[0].clientY,on:false}:null},{passive:true});
-  la.addEventListener('touchmove',e=>{if(!ld)return;const dy=e.touches[0].clientY-ld.y;if(!ld.on&&dy<8)return;ld.on=true;e.preventDefault();launcherSet(1-dy/(L.H-L.dockH),false)},{passive:false});
-  const endL=()=>{if(!ld)return;const on=ld.on;ld=null;if(!on)return;if(L.p<.72)launcherClose();else launcherSet(1,true)};
+  la.addEventListener('touchstart',e=>{ld=L.open?{y:e.touches[0].clientY,h0:lHeight(L.full?2:1),top:$('#linner').scrollTop<=0,on:false,dy:0}:null},{passive:true});
+  la.addEventListener('touchmove',e=>{if(!ld)return;const dy=e.touches[0].clientY-ld.y;if(!ld.on){if(Math.abs(dy)<8)return;if(dy<0&&(L.full||L.HF-L.H<=24)){ld=null;return}if(dy>0&&!ld.top){ld=null;return}ld.on=true}
+    e.preventDefault();ld.dy=dy;launcherSet(lFromH(ld.h0-dy),false)},{passive:false});
+  const endL=()=>{if(!ld)return;const d=ld;ld=null;if(!d.on)return;if(L.p<.72){launcherClose();return}
+    L.full=(L.full?d.dy<60:d.dy<-60)&&L.HF-L.H>24;haptic();launcherSet(L.full?2:1,true)};
   la.addEventListener('touchend',endL);la.addEventListener('touchcancel',endL);
   /* sheets: pull up for full screen, pull down to shrink or dismiss */
   let sd=null;
