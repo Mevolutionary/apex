@@ -257,9 +257,9 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.19';
+const LB=2.20462, DAY=864e5, VERSION='0.20';
 
-let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
+let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
 
 const $=s=>document.querySelector(s);
@@ -300,18 +300,19 @@ const lsGet=k=>{try{return localStorage.getItem(LS+k)}catch(e){return null}},lsS
 let fb=null,fbUser=null,cloudReady=false,cloudState=CFG?'connecting':'off',knownMonths=new Set(),pulling=false;
 const pend={},busy={};
 function localSave(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){toast('This device is out of storage space. Export a backup.')}}
-function localLoad(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);if(o&&Array.isArray(o.workouts))S=Object.assign(S,o)}}catch(e){}}
+function localLoad(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);if(o&&Array.isArray(o.workouts))S=Object.assign(S,o)}}catch(e){}if(!S.food)S.food={};if(!S.foods)S.foods=[]}
 function unsynced(){try{return JSON.parse(localStorage.getItem(LS+'.unsynced')||'[]')}catch(e){return[]}}
 function markUnsynced(k,on){try{const s=new Set(unsynced());on?s.add(k):s.delete(k);localStorage.setItem(LS+'.unsynced',JSON.stringify([...s]))}catch(e){}}
 const clone=o=>JSON.parse(JSON.stringify(o));
-function docFor(key){if(key==='settings')return{settings:S.settings,custom:S.custom,routines:S.routines};if(key==='weights')return{list:S.weights};if(key==='active')return{w:S.active};
+function docFor(key){if(key==='settings')return{settings:S.settings,custom:S.custom,routines:S.routines};if(key==='weights')return{list:S.weights};if(key==='active')return{w:S.active};if(key==='foods')return{list:S.foods};
+  if(key.startsWith('fd_')){const days={},m=key.slice(3);for(const d in S.food)if(d.startsWith(m)&&S.food[d].length)days[d]=S.food[d];return{days}}
   return{list:S.workouts.filter(w=>monthKey(w.start)===key)}}
-function cloudPut(key){markUnsynced(key,true);if(key.startsWith('wk_'))knownMonths.add(key);if(!cloudReady)return;pend[key]=clone(docFor(key));if(!busy[key])pump(key)}
+function cloudPut(key){markUnsynced(key,true);if(key.startsWith('wk_')||key.startsWith('fd_'))knownMonths.add(key);if(!cloudReady)return;pend[key]=clone(docFor(key));if(!busy[key])pump(key)}
 async function pump(key){busy[key]=true;while(key in pend){const d=pend[key];delete pend[key];try{await fb.F.setDoc(fb.F.doc(fb.db,'users',fbUser.uid,'data',key),d);if(!(key in pend))markUnsynced(key,false)}catch(e){cloudState='error';toast('Could not sync. Your change is kept on this device and will sync later.')}}busy[key]=false}
 let activeTimer=null;
 function save(...keys){localSave();for(const k of keys){if(k==='active'){markUnsynced('active',true);clearTimeout(activeTimer);activeTimer=setTimeout(()=>cloudPut('active'),1500)}else cloudPut(k)}}
-function saveAll(){localSave();const months=new Set(S.workouts.map(w=>monthKey(w.start)));knownMonths.forEach(m=>months.add(m));['settings','weights','active',...months].forEach(cloudPut)}
-const hasLocal=()=>!isEmpty()||S.custom.length>0||S.routines.length>0;
+function saveAll(){localSave();const months=new Set(S.workouts.map(w=>monthKey(w.start)));Object.keys(S.food).forEach(d=>months.add('fd_'+d.slice(0,7)));knownMonths.forEach(m=>months.add(m));['settings','weights','active','foods',...months].forEach(cloudPut)}
+const hasLocal=()=>!isEmpty()||S.custom.length>0||S.routines.length>0||Object.keys(S.food).length>0||S.foods.length>0;
 async function initCloud(){if(!CFG){cloudState='off';return}
   try{const v='https://www.gstatic.com/firebasejs/10.12.2/';
     const [A,U,F]=await Promise.all([import(v+'firebase-app.js'),import(v+'firebase-auth.js'),import(v+'firebase-firestore.js')]);
@@ -320,17 +321,19 @@ async function initCloud(){if(!CFG){cloudState='off';return}
   }catch(e){cloudState='error';refreshSettings()}}
 async function pull(){if(!fb||!fbUser||pulling)return;if(Object.keys(pend).length||Object.values(busy).some(Boolean))return;pulling=true;cloudState='connecting';
   try{const snap=await fb.F.getDocs(fb.F.collection(fb.db,'users',fbUser.uid,'data'));
-    const C={settings:null,custom:[],routines:[],weights:[],workouts:[],active:null};let any=false;
-    snap.forEach(d=>{const v=d.data()||{};any=true;if(d.id==='settings'){C.settings=v.settings;C.custom=v.custom||[];C.routines=v.routines||[]}else if(d.id==='weights')C.weights=v.list||[];else if(d.id==='active')C.active=v.w||null;else if(d.id.startsWith('wk_')){knownMonths.add(d.id);C.workouts.push(...(v.list||[]))}});
+    const C={settings:null,custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};let any=false;
+    snap.forEach(d=>{const v=d.data()||{};any=true;if(d.id==='settings'){C.settings=v.settings;C.custom=v.custom||[];C.routines=v.routines||[]}else if(d.id==='weights')C.weights=v.list||[];else if(d.id==='active')C.active=v.w||null;else if(d.id.startsWith('wk_')){knownMonths.add(d.id);C.workouts.push(...(v.list||[]))}else if(d.id==='foods')C.foods=v.list||[];else if(d.id.startsWith('fd_')){knownMonths.add(d.id);Object.assign(C.food,v.days||{})}});
     const dirty=unsynced().length>0&&hasLocal();
     if(any&&dirty){ /* this device has changes the cloud has not seen: keep both sides */
       const ids=new Set(S.workouts.map(w=>w.id));for(const w of C.workouts)if(!ids.has(w.id))S.workouts.push(w);
       const days=new Set(S.weights.map(w=>w.d));for(const w of C.weights)if(!days.has(w.d))S.weights.push(w);S.weights.sort((a,b)=>a.d<b.d?-1:1);
       const cs=new Set(S.custom.map(c=>c.id));for(const c of C.custom)if(!cs.has(c.id))S.custom.push(c);
       const rs=new Set(S.routines.map(c=>c.id));for(const c of C.routines)if(!rs.has(c.id))S.routines.push(c);
+      for(const d in C.food){const mine=S.food[d]||(S.food[d]=[]),have=new Set(mine.map(e=>e.id));for(const e of C.food[d])if(!have.has(e.id))mine.push(e)}
+      {const have=new Set(S.foods.map(f=>f.n+'|'+(f.b||'')));for(const f of C.foods)if(!have.has(f.n+'|'+(f.b||'')))S.foods.push(f)}
       recomputePRs(S.workouts);cloudReady=true;saveAll()
     }else if(any){const typing=document.activeElement&&/INPUT|SELECT/.test(document.activeElement.tagName);
-      S={settings:Object.assign({unit:'kg',sex:'male',rest:120},C.settings||{}),custom:C.custom,routines:C.routines,weights:C.weights,workouts:C.workouts.sort((a,b)=>a.start-b.start),active:C.active};cloudReady=true;localSave();try{localStorage.removeItem(LS+'.unsynced')}catch(e){}migrate();if(!typing)render()}
+      S={settings:Object.assign({unit:'kg',sex:'male',rest:120},C.settings||{}),custom:C.custom,routines:C.routines,weights:C.weights,workouts:C.workouts.sort((a,b)=>a.start-b.start),active:C.active,food:C.food,foods:C.foods};cloudReady=true;localSave();try{localStorage.removeItem(LS+'.unsynced')}catch(e){}migrate();if(!typing)render()}
     else{cloudReady=true;if(hasLocal())saveAll()}
     cloudState='synced';vaultSync();checkOwner();phFlush();if(tab==='home')render()
   }catch(e){if(e&&e.code==='permission-denied'){cloudState='blocked';blockReason=fbUser&&fbUser.emailVerified?'invite':'verify';if(tab==='home')render()}else cloudState='error'}
@@ -377,7 +380,7 @@ async function vaultSync(){const u=fbUser;if(!u)return;const k='.vaultPend.'+u.u
 async function reauth(pw){await fb.U.reauthenticateWithCredential(fbUser,fb.U.EmailAuthProvider.credential(fbUser.email,pw))}
 async function vaultOn(){const pw=($('#vault-pw')||{}).value;if(!pw){toast('Enter your account password.');return}try{await reauth(pw)}catch(e){toast(AUTHMSG[e&&e.code]||'That password did not match.');return}
   try{await vaultOpen(pw);toast('Photo encryption is on.')}catch(e){toast('Could not switch on encryption. Try again.')}}
-async function wipeLocal(){S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};for(const k of Object.keys(phCache))delete phCache[k];
+async function wipeLocal(){S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};for(const k of Object.keys(phCache))delete phCache[k];
   try{Object.keys(localStorage).filter(k=>k.startsWith(LS)&&k!==LS+'.loginAsked').forEach(k=>localStorage.removeItem(k))}catch(e){}
   try{await idbDo('readwrite',s=>s.clear())}catch(e){}try{await idbDo('readwrite',s=>s.clear(),'keys')}catch(e){}knownMonths=new Set()}
 async function deleteAccount(){const pw=($('#del-pw')||{}).value;if(!pw){toast('Enter your password to confirm.');return}
@@ -421,7 +424,7 @@ const ICON={home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1
 /* Everything the app can open. kind: screen (a tab), tool (opens a sheet), soon (planned, shown as a placeholder). New features get added here and can then be pinned to the dock. */
 const ITEMS={home:{label:'Home',kind:'screen'},train:{label:'Train',kind:'screen'},history:{label:'History',kind:'screen'},ranks:{label:'Ranks',kind:'screen'},body:{label:'Body',kind:'screen'},
   plates:{label:'Plates',kind:'tool'},settings:{label:'Settings',kind:'tool'},
-  food:{label:'Nutrition',kind:'soon',note:'the nutrition update'},scan:{label:'Food scan',kind:'soon',note:'the nutrition update'},coach:{label:'Coach',kind:'soon',note:'the workout generator update'},studies:{label:'Studies',kind:'soon',note:'a later update'},share:{label:'Share card',kind:'soon',note:'a later update'}};
+  food:{label:'Nutrition',kind:'screen'},scan:{label:'Scan food',kind:'tool'},coach:{label:'Coach',kind:'soon',note:'the workout generator update'},studies:{label:'Studies',kind:'soon',note:'a later update'},share:{label:'Share card',kind:'soon',note:'a later update'}};
 const SCREENS=Object.keys(ITEMS).filter(k=>ITEMS[k].kind==='screen'),DEFAULT_DOCK=['home','train','history','ranks','body'];
 let dockEdit=false,navDragging=false;
 /* An invisible iOS switch laid over a control. A real finger tap on a switch is the one case where iOS still gives web pages a haptic tick. */
@@ -432,7 +435,7 @@ function dock(){const d=(S.settings.dock||DEFAULT_DOCK).filter(id=>ITEMS[id]&&IT
 const swipeOrder=()=>{const d=dock().filter(id=>ITEMS[id].kind==='screen');return d.includes(tab)?d:SCREENS};
 function buildNav(){const d=dock(),nav=$('#nav');nav.dataset.sig=d.join();nav.style.setProperty('--n',d.length);nav.innerHTML='<button class="grab" data-a="launcher" aria-label="Open all features"></button><input type="checkbox" switch class="hx navhx" tabindex="-1" aria-hidden="true"><span class="ind"></span>'+d.map(k=>`<div class="di" role="button" tabindex="0" data-a="open" data-v="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${ITEMS[k].label}${HX}</div>`).join('')}
 function renderNav(){const d=dock(),nav=$('#nav');if(nav.dataset.sig!==d.join())buildNav();const i=d.indexOf(tab);document.querySelectorAll('#nav .di').forEach((b,j)=>{b.classList.toggle('on',i===j);b.setAttribute('aria-current',i===j?'page':'false')});const ind=document.querySelector('#nav .ind');if(ind&&!navDragging){ind.style.opacity=i<0?0:1;if(i>=0)ind.style.transform='translateX('+i*100+'%)'}}
-function openItem(id){const it=ITEMS[id];if(!it)return;if(it.kind==='soon'){toast(it.label+' arrives in '+it.note+'.');return}launcherClose();if(it.kind==='screen'){closeSheet();go(id)}else if(id==='plates')platesSheet();else if(id==='settings')settingsSheet()}
+function openItem(id){const it=ITEMS[id];if(!it)return;if(it.kind==='soon'){toast(it.label+' arrives in '+it.note+'.');return}launcherClose();if(it.kind==='screen'){closeSheet();go(id)}else if(id==='plates')platesSheet();else if(id==='scan'){closeSheet();if(tab!=='food')go('food');nutAction('fd-scan')}else if(id==='settings')settingsSheet()}
 /* The launcher is a floating panel that starts at the dock's exact size and shape and grows upward. p is how open it is, 0 to 1, so a finger can drive it directly. */
 const L={open:false,full:false,p:0,H:0,HF:0,dockH:64,timer:null}; /* p: 0 = dock, 1 = open, 2 = full screen */
 function launcherRender(){const d=dock(),tile=id=>{const it=ITEMS[id],pinned=d.includes(id),soon=it.kind==='soon';
@@ -473,6 +476,7 @@ function home(){const d=V(),ws=weekStart(),wk=d.workouts.filter(w=>w.start>=ws),
     <div class="num" style="font-size:30px;font-weight:900;line-height:1.1">${o?TIERS[o.tier][0]:'Unranked'}</div>
     ${o?(o.tier<6?`<div class="track" style="margin-top:8px"><i style="width:${Math.round(o.prog*100)}%"></i></div><div class="small muted" style="margin-top:6px">${Math.round(o.prog*100)}% of the way to ${TIERS[o.tier+1][0]}, from ${o.count} ranked lift${o.count>1?'s':''}</div>`:'<div class="small muted">Top tier reached</div>'):'<div class="small muted">Log your bodyweight and a ranked lift to get a rank.</div>'}
   </div></div></section>
+  ${typeof nutHome==='function'?nutHome():''}
   <button class="btn primary block" data-a="${S.active?'tab':'start'}" data-v="train">${S.active?'Continue workout':'Start workout'}</button>
   <section class="glass card"><h2>This week</h2><div class="grid3">
     <div class="tile"><b>${wk.length}</b><span>workouts</span></div>
@@ -600,7 +604,7 @@ function compareSheet(){const ph=S.weights.filter(w=>w.p);if(ph.length<2)return;
   openSheet(`<h2>First and latest</h2><div class="row" style="align-items:flex-start">${fig(a)}${fig(b)}</div><p class="small" style="margin-top:12px">Change between them: ${(b.kg-a.kg>0?'+':'')+disp(b.kg-a.kg)} ${unit()}.</p>`,'photo');fillPhotos()}
 function saveWeigh(val,d,hasPhoto){const old=S.weights.find(w=>w.d===d),e={d,kg:Math.round(toKg(val)*100)/100};if(hasPhoto||(old&&old.p))e.p=1;S.weights=S.weights.filter(w=>w.d!==d);S.weights.push(e);S.weights.sort((a,b)=>a.d<b.d?-1:1);save('weights');render()}
 
-function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body})[tab]());tick();if(tab==='body')fillPhotos()}
+function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body,food})[tab]());tick();if(tab==='body')fillPhotos()}
 function go(t){const ix=k=>SCREENS.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
   /* leave a copy of the old screen behind for a moment so it can fade and slide away while the new one arrives */
   try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),300)}}catch(e){}
@@ -623,14 +627,15 @@ function pushSheet(html,kind){const sh=$('#sheet'),sc=$('#scrim'),r=sh.getBoundi
   requestAnimationFrame(()=>{g.style.transform='scale(.93) translateY(-10px)';g.style.filter='brightness(.55)'});
   SH.full=false;sh.dataset.h='';sh.dataset.kind=kind||'';sh.innerHTML='<div class="grab"></div>'+withTicks(html);sh.scrollTop=0;sh.style.transform='';sh.style.opacity='';
   sh.style.animation='none';void sh.offsetWidth;sh.style.animation='';sheetMeasure(false)}
-function dismissSheet(){if(!sheetStack.length){closeSheet();return}const st=sheetStack.pop(),sh=$('#sheet');
+function dismissSheet(){runCleanup();if(!sheetStack.length){closeSheet();return}const st=sheetStack.pop(),sh=$('#sheet');
   sh.style.transition='transform .3s cubic-bezier(.4,0,1,1),opacity .26s';sh.style.transform='translateY(70px) scale(.97)';sh.style.opacity='0';st.ghost.style.transform='';st.ghost.style.filter='';
   setTimeout(()=>{sh.style.transition='none';sh.style.animation='none';sh.style.opacity='';sh.style.transform='';sh.dataset.kind=st.kind;sh.innerHTML=st.html;SH.full=st.full;sh.dataset.h='';sheetMeasure(false);sh.scrollTop=st.top;st.ghost.remove()},300)}
-function openSheet(html,kind){if(pushMode){pushMode=false;const sc0=$('#scrim');if(sc0.classList.contains('on')&&!sc0.classList.contains('closing')){pushSheet(html,kind);return}}
+function runCleanup(){if(window.sheetCleanup){const f=window.sheetCleanup;window.sheetCleanup=null;try{f()}catch(e){}}}
+function openSheet(html,kind){runCleanup();if(pushMode){pushMode=false;const sc0=$('#scrim');if(sc0.classList.contains('on')&&!sc0.classList.contains('closing')){pushSheet(html,kind);return}}
   clearStack();const sh=$('#sheet'),sc=$('#scrim'),same=sc.classList.contains('on')&&!sc.classList.contains('closing')&&sh.dataset.kind===(kind||'')&&!!kind;
   clearTimeout(SH.timer);sc.classList.remove('closing');if(!same){SH.full=false;sh.dataset.h=''}
   sh.dataset.kind=kind||'';sh.innerHTML='<div class="grab"></div>'+withTicks(html);sh.style.transform='';sc.classList.add('on');if(!same)sh.scrollTop=0;sheetMeasure(same)}
-function closeSheet(){const sc=$('#scrim');confirmCb=null;clearStack();if(!sc.classList.contains('on')||sc.classList.contains('closing'))return;sc.classList.add('closing');clearTimeout(SH.timer);SH.timer=setTimeout(()=>{sc.classList.remove('on','closing');SH.full=false;const s2=$('#sheet');s2.dataset.h='';s2.style.animation='';s2.style.opacity=''},290)}
+function closeSheet(){runCleanup();const sc=$('#scrim');confirmCb=null;clearStack();if(!sc.classList.contains('on')||sc.classList.contains('closing'))return;sc.classList.add('closing');clearTimeout(SH.timer);SH.timer=setTimeout(()=>{sc.classList.remove('on','closing');SH.full=false;const s2=$('#sheet');s2.dataset.h='';s2.style.animation='';s2.style.opacity=''},290)}
 function confirmSheet(title,msg,label,cb){confirmCb=cb;openSheet(`<h2>${title}</h2><p>${msg}</p><div class="row"><button class="btn" style="flex:1" data-a="close">Keep</button><button class="btn danger" style="flex:1" data-a="confirm">${label}</button></div>`)}
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),3200)}
 const INFO={
@@ -651,6 +656,7 @@ function settingsSheet(){
   <div class="row between"><span>Rank standards</span><div class="seg"><button data-a="set" data-k="sex" data-v="male" class="${S.settings.sex==='male'?'on':''}">Male</button><button data-a="set" data-k="sex" data-v="female" class="${S.settings.sex==='female'?'on':''}">Female</button></div></div>
   <div class="row between"><span>Rest timer</span><div class="seg">${[0,60,90,120,180].map(n=>`<button data-a="set" data-k="rest" data-v="${n}" class="${S.settings.rest===n?'on':''}">${n?n+'s':'Off'}</button>`).join('')}</div></div>
   ${sync}
+  ${typeof nutSettingsRow==='function'?nutSettingsRow():''}
   <div class="row between"><span>App lock</span><button class="btn sm" data-a="pin">${pinGet()?'On · change':'Set a PIN'}</button></div>
   <button class="btn block" data-a="export">Export a backup file</button>
   <label class="btn block">Restore from a backup file<input type="file" id="imp-json" accept=".json,application/json" hidden></label>
@@ -695,7 +701,7 @@ async function exportBackup(){const data=JSON.stringify({app:'apex',version:1,ex
   try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast('Backup downloaded.')}catch(e){toast('Could not export a backup on this browser.')}}
 function restore(text){let o;try{o=JSON.parse(text)}catch(e){toast('That file is not a valid backup.');return}
   if(!o||!Array.isArray(o.workouts)||!Array.isArray(o.weights)){toast('That file is not an Apex backup.');return}
-  confirmSheet('Replace everything?','This replaces all current data with the backup: '+o.workouts.length+' workouts and '+o.weights.length+' weigh-ins.','Replace',()=>{S={settings:Object.assign({unit:'kg',sex:'male',rest:120},o.settings||{}),custom:o.custom||[],routines:o.routines||[],weights:o.weights,workouts:o.workouts,active:null};recomputePRs(S.workouts);saveAll();render();toast('Backup restored.')})}
+  confirmSheet('Replace everything?','This replaces all current data with the backup: '+o.workouts.length+' workouts and '+o.weights.length+' weigh-ins.','Replace',()=>{S={settings:Object.assign({unit:'kg',sex:'male',rest:120},o.settings||{}),custom:o.custom||[],routines:o.routines||[],weights:o.weights,workouts:o.workouts,active:null,food:o.food||{},foods:o.foods||[]};recomputePRs(S.workouts);saveAll();render();toast('Backup restored.')})}
 function parseCSV(t){const rows=[];let row=[],cur='',q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}else if(c==='"')q=true;else if(c===','){row.push(cur);cur=''}else if(c==='\n'){row.push(cur);rows.push(row);row=[];cur=''}else if(c!=='\r')cur+=c}if(cur||row.length){row.push(cur);rows.push(row)}return rows}
 function parseWhen(s){const m=/(\d{1,2}) (\w{3})\w* (\d{4}),? (\d{1,2}):(\d{2})/.exec(s||'');if(m){const mo='janfebmaraprmayjunjulaugsepoctnovdec'.indexOf(m[2].toLowerCase())/3;if(mo>=0&&mo%1===0)return new Date(+m[3],mo,+m[1],+m[4],+m[5]).getTime()}const d=Date.parse(s);return isNaN(d)?null:d}
 const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -757,7 +763,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   nav.addEventListener('touchend',endDrag);nav.addEventListener('touchcancel',endDrag);
   /* swipe left or right anywhere on a screen to move between docked screens */
   let sw=null;
-  view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input,select,.phstrip')?null:{x:t.clientX,y:t.clientY}},{passive:true});
+  view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input,select,.phstrip,.hscroll')?null:{x:t.clientX,y:t.clientY}},{passive:true});
   view.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;sw=null;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.8)return;
     const o=swipeOrder(),n=o.indexOf(tab)+(dx<0?1:-1);if(n<0||n>=o.length)return;haptic();go(o[n])},{passive:true});
   /* pull the launcher back down into the dock */
@@ -782,7 +788,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   sh.addEventListener('touchend',endSheet);sh.addEventListener('touchcancel',endSheet)}
 
 /* ================= events ================= */
-document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');
+document.addEventListener('click',ev=>{if(typeof nutPreClick==='function'&&nutPreClick(ev))return;const b=ev.target.closest('[data-a]');
   if(ev.target.closest('#bw-photo-lbl')&&ev.target.id!=='bw-photo'&&!(parseFloat($('#bw-val').value)>0)){ev.preventDefault();toast('Enter your weight first, then add the photo.');return}if(ev.target.id==='scrim'){dismissSheet();return}if(ev.target.id==='lscrim'){launcherClose();return}if(!b)return;const a=b.dataset.a,v=b.dataset.v,x=+b.dataset.x,s=+b.dataset.s;
   if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
   if((a==='open'||a==='launcher')&&b.closest('#nav')&&Date.now()-lastTabDrag<450)return;
@@ -823,7 +829,7 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');
   case 'lock-back':lockShow();break;
   case 'lock-erase':wipeLocal().then(()=>{if(fb&&fbUser)fb.U.signOut(fb.auth);$('#lock').classList.remove('on');$('#lock').innerHTML='';go('home');toast('This device was erased and the PIN removed.')});break;
   case 'export':exportBackup();break;
-  case 'wipe':confirmSheet('Delete all data?','This removes every workout, weigh-in, progress photo, routine and custom exercise. Export a backup first if you might want it back.','Delete everything',()=>{S.weights.filter(w=>w.p).forEach(w=>phRemove(w.d));S={settings:S.settings,custom:[],routines:[],weights:[],workouts:[],active:null};saveAll();go('home');toast('All data deleted.')});break;
+  case 'wipe':confirmSheet('Delete all data?','This removes every workout, weigh-in, progress photo, food log, routine and custom exercise. Export a backup first if you might want it back.','Delete everything',()=>{S.weights.filter(w=>w.p).forEach(w=>phRemove(w.d));S={settings:S.settings,custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};saveAll();go('home');toast('All data deleted.')});break;
   case 'start':startWorkout();break;
   case 'repeat':{const l=S.workouts[S.workouts.length-1];startWorkout(l.exercises.map(e=>e.exId),l.name);break}
   case 'start-routine':{const r=S.routines.find(r=>r.id===v);r&&startWorkout(r.exIds,r.name);break}
@@ -853,19 +859,23 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
+  default:if(typeof nutAction==='function')nutAction(a,v,b);
   }});
-document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(!i)return;
+document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
   else if(i==='wname'){S.active.name=t.value;save('active')}
   else if(i==='pickq'){pickQuery=t.value;const q=pickQuery.trim().toLowerCase();$('#pick-list').innerHTML=pickRows(allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q))))}
   else if(i==='plates'){const v=parseFloat($('#pl-v').value)||0,b=parseFloat($('#pl-b').value)||0,id=t.id,pos=t.selectionStart;platesSheet(v,b);const el=$('#'+id);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}});
-document.addEventListener('change',ev=>{const t=ev.target;
+document.addEventListener('change',ev=>{const t=ev.target;if(typeof nutChange==='function'&&nutChange(t))return;
   if(t.id==='bw-photo'){const f=t.files&&t.files[0],val=parseFloat($('#bw-val').value),d=$('#bw-date').value||ymd(Date.now());if(!f)return;if(!(val>0)){toast('Enter your weight first, then add the photo.');return}
     toast('Saving photo…');phSave(d,f).then(()=>{saveWeigh(val,d,true);toast('Weigh-in and photo saved.')}).catch(()=>{saveWeigh(val,d,false);toast('Weigh-in saved, but the photo could not be read.')});return}
   if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
 document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lock-pin'){unlock();return}if(ev.key==='Escape'){dismissSheet();launcherClose()}else if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches&&ev.target.matches('div[role=button]')){ev.preventDefault();ev.target.click()}});
 
 /* ================= boot ================= */
+</script>
+<script src="nutrition.js"></script>
+<script>
 localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();if(pinGet())lockShow();initCloud();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(location.protocol==='https:')setTimeout(()=>checkUpdate(false),2500);
