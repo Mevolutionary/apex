@@ -206,7 +206,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.4';
+const LB=2.20462, DAY=864e5, VERSION='0.5';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -286,7 +286,7 @@ function refreshSettings(){if($('#scrim').classList.contains('on')&&$('#sheet').
 const AUTHMSG={'auth/invalid-credential':'Wrong email or password.','auth/wrong-password':'Wrong email or password.','auth/user-not-found':'No account with that email. Use Create account.','auth/email-already-in-use':'That email already has an account. Use Sign in.','auth/weak-password':'Use a password of at least 6 characters.','auth/invalid-email':'That email address does not look right.','auth/network-request-failed':'No connection. Try again when you are online.','auth/operation-not-allowed':'Email sign-in is not switched on in your Firebase project yet.'};
 async function authGo(create){const em=$('#au-email').value.trim(),pw=$('#au-pass').value;if(!em||!pw){toast('Enter your email and a password.');return}
   try{await (create?fb.U.createUserWithEmailAndPassword:fb.U.signInWithEmailAndPassword)(fb.auth,em,pw);toast(create?'Account created. Sync is on.':'Signed in. Sync is on.')}catch(e){toast(AUTHMSG[e&&e.code]||'Could not sign in. Check your details and try again.')}}
-document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')pull()});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'){pull();checkUpdate(false)}});
 window.addEventListener('online',()=>pull());
 
 /* ================= ranks ================= */
@@ -423,7 +423,7 @@ function settingsSheet(){
   <label class="btn block">Import workouts from a Hevy CSV export<input type="file" id="imp-hevy" accept=".csv,text/csv" hidden></label>
   <button class="btn block danger" data-a="wipe">Delete all my data</button>
   <button class="btn block primary" data-a="close">Done</button>
-  <div class="small muted" style="text-align:center">Apex ${VERSION}</div></div>`,'settings')}
+  <div class="small muted" style="text-align:center">Apex ${VERSION} · <button class="info" data-a="check-update">Check for updates</button></div></div>`,'settings')}
 function pickSheet(){const q=pickQuery.trim().toLowerCase();const list=allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q)));
   openSheet(`<h2>Add exercise</h2><div class="stack"><input type="text" id="pick-q" data-i="pickq" value="${esc(pickQuery)}" placeholder="Search exercises">
   <div class="row" style="overflow-x:auto;padding-bottom:4px">${['All',...MUSCLES].map(m=>`<button class="chip ${pickFilter===m?'on':''}" data-a="pick-filter" data-v="${m}">${m}</button>`).join('')}</div>
@@ -478,6 +478,15 @@ function importHevy(text){const rows=parseCSV(text);if(rows.length<2){toast('Tha
   const list=Object.values(map).filter(w=>w.exercises.length);if(!list.length){toast('No new workouts found in that file.');return}
   S.workouts.push(...list);recomputePRs(S.workouts);saveAll();closeSheet();go('history');toast('Imported '+list.length+' workout'+(list.length>1?'s':'')+' from Hevy.')}
 
+/* ================= updates ================= */
+/* The home-screen app keeps its own cached copy. This asks the server for the live version and offers to reload when it differs. */
+let newVersion=null;
+async function checkUpdate(manual){try{const t=await (await fetch('index.html?u='+Date.now(),{cache:'no-store'})).text(),m=/VERSION='([^']+)'/.exec(t);
+    if(m&&m[1]!==VERSION){newVersion=m[1];const busySheet=$('#scrim').classList.contains('on')&&$('#sheet').dataset.kind!=='settings';
+      if(manual||(!S.active&&!busySheet))openSheet(`<h2>Update available</h2><p>Apex ${esc(newVersion)} is ready. You have ${VERSION}. Your data is not affected.</p><div class="row"><button class="btn" style="flex:1" data-a="close">Later</button><button class="btn primary" style="flex:1" data-a="apply-update">Update now</button></div>`)}
+    else if(manual)toast('You have the latest version.')}catch(e){if(manual)toast('Could not check. Are you online?')}}
+async function applyUpdate(){try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}if(navigator.serviceWorker){const r=await navigator.serviceWorker.getRegistration();r&&await r.update()}}catch(e){}location.reload()}
+
 /* ================= haptics and gestures ================= */
 /* iPhone browsers have no vibration API. Toggling a hidden iOS "switch" checkbox makes the phone give its small system tick, which is the only way a web app can get haptics there. */
 let hapEl=null,lastTabDrag=0;
@@ -516,6 +525,8 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(
   case 'tab':go(v);break;
   case 'open':openItem(v);break;
   case 'launcher':dockEdit=false;launcherSheet();break;
+  case 'check-update':checkUpdate(true);break;
+  case 'apply-update':applyUpdate();break;
   case 'dock-edit':dockEdit=!dockEdit;launcherSheet();break;
   case 'pin':{let d=dock().slice();if(d.includes(v)){if(d.length<=2){toast('Keep at least 2 items in the dock.');break}d=d.filter(x=>x!==v)}else{if(d.length>=5){toast('The dock is full. Remove one first.');break}d.push(v)}
     S.settings.dock=Object.keys(ITEMS).filter(k=>d.includes(k));save('settings');renderNav();launcherSheet();break}
@@ -564,6 +575,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet()});
 /* ================= boot ================= */
 localLoad();buildDemo();buildNav();go(tab);initGestures();initCloud();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+if(location.protocol==='https:')setTimeout(()=>checkUpdate(false),2500);
 </script>
 </body>
 </html>
