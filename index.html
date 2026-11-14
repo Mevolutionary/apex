@@ -44,17 +44,28 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 .num{font-family:var(--display);font-variant-numeric:tabular-nums}
 
 /* colour field */
-.field{position:fixed;inset:0;overflow:hidden;z-index:0;pointer-events:none}
-.field i{position:absolute;border-radius:50%;filter:blur(70px);opacity:.75;animation:drift 26s ease-in-out infinite alternate}
-.field i:nth-child(1){width:70vmax;height:70vmax;left:-25vmax;top:-30vmax;background:#3a2bd6}
-.field i:nth-child(2){width:55vmax;height:55vmax;right:-22vmax;top:18%;background:#e0492f;animation-delay:-8s;opacity:.55}
-.field i:nth-child(3){width:60vmax;height:60vmax;left:-10vmax;bottom:-30vmax;background:#0f8fd1;animation-delay:-15s;opacity:.6}
-@keyframes drift{to{transform:translate(6vmax,4vmax) scale(1.12)}}
-@media (prefers-reduced-motion:reduce){.field i{animation:none}*{transition:none!important}}
+html{background:#060814}
+.field{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100lvh;overflow:hidden;z-index:0;pointer-events:none;background:#060814}
+.field i{position:absolute;inset:-30%;will-change:transform}
+.field i:nth-child(1){background:radial-gradient(42% 36% at 28% 24%,rgba(92,74,255,.8),transparent 72%),radial-gradient(40% 36% at 78% 72%,rgba(0,160,215,.55),transparent 72%);animation:driftA 19s ease-in-out infinite alternate}
+.field i:nth-child(2){background:radial-gradient(34% 30% at 76% 24%,rgba(255,112,92,.38),transparent 72%),radial-gradient(44% 38% at 18% 82%,rgba(150,84,255,.5),transparent 72%);animation:driftB 25s ease-in-out infinite alternate}
+.field i:nth-child(3){inset:0;background:radial-gradient(130% 90% at 50% 10%,transparent 45%,rgba(3,4,10,.72))}
+@keyframes driftA{to{transform:translate(9%,7%) rotate(10deg) scale(1.12)}}
+@keyframes driftB{to{transform:translate(-8%,-6%) rotate(-12deg) scale(1.18)}}
+@keyframes in{from{opacity:0;transform:translateY(16px) scale(.98)}}
+@keyframes grow{from{transform:scaleX(0)}}
+@keyframes pop{40%{transform:scale(1.25)}}
+@keyframes fade{from{opacity:0}}
+main.enter>*{animation:in .42s cubic-bezier(.2,.85,.25,1) both}
+main.enter>*:nth-child(2){animation-delay:.04s}main.enter>*:nth-child(3){animation-delay:.08s}main.enter>*:nth-child(4){animation-delay:.12s}main.enter>*:nth-child(5){animation-delay:.16s}main.enter>*:nth-child(n+6){animation-delay:.2s}
+main.enter .track i{animation:grow .8s .2s cubic-bezier(.2,.85,.25,1) both;transform-origin:left}
+.check.pop{animation:pop .32s cubic-bezier(.3,1.4,.5,1)}
+#scrim.on{animation:fade .22s}
+@media (prefers-reduced-motion:reduce){.field i,main.enter>*,main.enter .track i,.check.pop,#scrim.on,#sheet{animation:none!important}*{transition:none!important}}
 
 /* shell */
 #app{position:relative;z-index:1;height:100%;max-width:540px;margin:0 auto;display:flex;flex-direction:column}
-main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 150px);display:flex;flex-direction:column;gap:14px}
+main{flex:1;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 18px) 16px calc(env(safe-area-inset-bottom) + 150px);display:flex;flex-direction:column;gap:14px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:4px 4px 2px}
 .top h1{font-size:34px;font-weight:900;letter-spacing:-.5px}
 .top .sub{color:var(--ink-2);font-size:14px}
@@ -92,13 +103,17 @@ main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:calc(env(sa
 .pr{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.4px;background:var(--gold);color:#3a2a00}
 input[type=text],input[type=number],input[type=date],select{width:100%;min-height:46px;padding:0 14px;border-radius:14px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.14);font-size:16px}
 input::placeholder{color:var(--ink-3)}
-label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-2)}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-2);min-width:0}
+input[type=date]{-webkit-appearance:none;appearance:none;min-width:0;display:block;text-align:left}
+input::-webkit-date-and-time-value{text-align:left}
 
 /* tab bar */
 nav{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 14px);width:min(508px,calc(100% - 32px));display:flex;padding:6px;border-radius:999px}
 nav button{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;border-radius:999px;font-size:11px;font-weight:600;color:var(--ink-2)}
 nav button svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-nav button.on{color:var(--ink);background:rgba(255,255,255,.16);box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+nav button{position:relative;z-index:1;transition:color .25s,transform .12s}nav button:active{transform:scale(.92)}
+nav button.on{color:var(--ink)}
+nav .ind{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/5);border-radius:999px;background:rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 14px rgba(0,0,0,.2);transition:transform .42s cubic-bezier(.3,1.35,.5,1)}
 
 /* rest pill */
 #rest{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 86px);width:min(508px,calc(100% - 32px));padding:10px 12px 10px 18px;border-radius:999px;display:none;align-items:center;gap:10px;overflow:hidden}
@@ -177,7 +192,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.1';
+const LB=2.20462, DAY=864e5, VERSION='0.2';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -270,7 +285,8 @@ function emblem(tier,size){const c=TIERS[tier][1],id='g'+tier+size;return `<svg 
 /* ================= screens ================= */
 const ICON={home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',train:'<path d="M6 7v10M3 9.5v5M18 7v10M21 9.5v5M6 12h12"/>',history:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',ranks:'<path d="M12 3l7 4v6c0 4-3 7-7 8-4-1-7-4-7-8V7z"/>',body:'<path d="M4 18l5-6 4 3 7-9"/>'};
 const TABS=[['home','Home'],['train','Train'],['history','History'],['ranks','Ranks'],['body','Body']];
-function renderNav(){$('#nav').innerHTML=TABS.map(([k,l])=>`<button data-a="tab" data-v="${k}" class="${tab===k?'on':''}" aria-current="${tab===k?'page':'false'}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${l}</button>`).join('')}
+function buildNav(){$('#nav').innerHTML='<span class="ind"></span>'+TABS.map(([k,l])=>`<button data-a="tab" data-v="${k}"><svg viewBox="0 0 24 24">${ICON[k]}</svg>${l}</button>`).join('')}
+function renderNav(){const i=TABS.findIndex(t=>t[0]===tab);document.querySelectorAll('#nav button').forEach((b,j)=>{b.classList.toggle('on',i===j);b.setAttribute('aria-current',i===j?'page':'false')});const ind=document.querySelector('#nav .ind');if(ind)ind.style.transform='translateX('+i*100+'%)'}
 const demoBanner=()=>isEmpty()?`<div class="banner">You are looking at example data so you can see how each screen works. It disappears as soon as you log your first workout or weigh-in.</div>`:'';
 function weekStart(){const d=new Date();d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()}
 function streak(list){let ws=weekStart(),n=0;const has=s=>list.some(w=>w.start>=s&&w.start<s+7*DAY);if(!has(ws))ws-=7*DAY;while(has(ws)){n++;ws-=7*DAY}return n}
@@ -353,7 +369,7 @@ function body(){const l=V().weights,tr=trend(l),cur=l[l.length-1],tnow=tr[tr.len
   ${isEmpty()||!l.length?'':`<section class="glass card"><h2>Entries</h2><div class="list">${l.slice().reverse().slice(0,30).map(w=>`<div class="row between"><span>${niceDate(w.d+'T12:00')}</span><div class="row"><span class="num" style="font-weight:700">${disp(w.kg)} ${unit()}</span><button class="btn sm danger" data-a="del-weight" data-v="${w.d}" aria-label="Delete weigh-in from ${w.d}">Delete</button></div></div>`).join('')}</div></section>`}`}
 
 function render(){renderNav();const v=$('#view');v.innerHTML=({home,train,history,ranks,body})[tab]();tick()}
-function go(t){tab=t;render();$('#view').scrollTop=0}
+function go(t){tab=t;render();const v=$('#view');v.scrollTop=0;v.classList.remove('enter');void v.offsetWidth;v.classList.add('enter')}
 
 /* ================= sheets ================= */
 function openSheet(html,kind){$('#sheet').dataset.kind=kind||'';$('#sheet').innerHTML='<div class="grab"></div>'+html;$('#scrim').classList.add('on');$('#sheet').scrollTop=0}
@@ -462,7 +478,7 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(
   case 'rm-ex':S.active.exercises.splice(x,1);save('active');render();break;
   case 'add-set':{const st=S.active.exercises[x].sets,l=st[st.length-1]||{};st.push({w:l.w??null,r:l.r??null,done:false});save('active');render();break}
   case 'rm-set':S.active.exercises[x].sets.pop();save('active');render();break;
-  case 'check':{const e=S.active.exercises[x],st=e.sets[s],p=(prevSets(e.exId)||[])[s];if(!st.done){if(st.w==null&&p)st.w=p.w;if(st.r==null&&p)st.r=p.r;if(!(st.r>0)){toast('Enter reps first.');break}st.done=true;startRest()}else st.done=false;save('active');render();break}
+  case 'check':{const e=S.active.exercises[x],st=e.sets[s],p=(prevSets(e.exId)||[])[s];if(!st.done){if(st.w==null&&p)st.w=p.w;if(st.r==null&&p)st.r=p.r;if(!(st.r>0)){toast('Enter reps first.');break}st.done=true;startRest()}else st.done=false;save('active');render();if(st.done){const c=document.querySelector(`[data-a="check"][data-x="${x}"][data-s="${s}"]`);c&&c.classList.add('pop')}break}
   case 'finish':finish();break;
   case 'cancel':confirmSheet('Discard this workout?','Nothing from this session will be saved.','Discard',()=>{S.active=null;stopRest();save('active');render()});break;
   case 'expand':expanded=expanded===v?null:v;render();break;
@@ -482,7 +498,7 @@ document.addEventListener('change',ev=>{const t=ev.target;if(t.id!=='imp-json'&&
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape')closeSheet()});
 
 /* ================= boot ================= */
-localLoad();buildDemo();render();initCloud();
+localLoad();buildDemo();buildNav();go(tab);initCloud();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
 </body>
