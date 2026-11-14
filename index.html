@@ -101,6 +101,10 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-
 #nav,#rest,#toast{-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%)}
 .card{background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.07) 45%,rgba(255,255,255,.035));contain:layout paint}
 .tap{cursor:pointer}
+.phstrip{display:flex;gap:10px;overflow-x:auto;touch-action:pan-x;padding-bottom:4px;-webkit-overflow-scrolling:touch}
+.ph{flex:none;width:96px;display:flex;flex-direction:column;gap:6px;align-items:center}
+.ph img{width:96px;height:128px;object-fit:cover;border-radius:16px;background:rgba(255,255,255,.08);display:block}
+.phfull{width:100%;border-radius:20px;display:block;background:rgba(255,255,255,.06);min-height:120px}
 .fold{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .5s cubic-bezier(.22,1,.32,1),opacity .4s}
 .hist.open .fold{grid-template-rows:1fr;opacity:1}
 .foldin{overflow:hidden;min-height:0}
@@ -246,7 +250,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.15';
+const LB=2.20462, DAY=864e5, VERSION='0.16';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -319,7 +323,7 @@ async function pull(){if(!fb||!fbUser||pulling)return;if(Object.keys(pend).lengt
     }else if(any){const typing=document.activeElement&&/INPUT|SELECT/.test(document.activeElement.tagName);
       S={settings:Object.assign({unit:'kg',sex:'male',rest:120},C.settings||{}),custom:C.custom,routines:C.routines,weights:C.weights,workouts:C.workouts.sort((a,b)=>a.start-b.start),active:C.active};cloudReady=true;localSave();try{localStorage.removeItem(LS+'.unsynced')}catch(e){}migrate();if(!typing)render()}
     else{cloudReady=true;if(hasLocal())saveAll()}
-    cloudState='synced';if(tab==='home')render()
+    cloudState='synced';phFlush();if(tab==='home')render()
   }catch(e){cloudState='error'}
   pulling=false;refreshSettings()}
 function loginSheet(){openSheet(`<h2>Sign in to keep your training</h2><p>Right now everything is stored only on this device. Sign in and it backs up automatically and stays in step across your phone and computer. New here? Enter an email and a password, then choose Create account.</p>
@@ -497,10 +501,33 @@ function body(){const l=V().weights,tr=trend(l),cur=l[l.length-1],tnow=tr[tr.len
   <section class="glass card"><div class="row between" style="align-items:flex-end"><div><div class="small muted">Trend weight</div><div class="num" style="font-size:44px;font-weight:900;line-height:1">${cur?disp(tnow):'—'}<span style="font-size:18px;color:var(--ink-2)"> ${unit()}</span></div></div><div class="small muted" style="text-align:right">Last weigh-in<br><span class="num" style="color:var(--ink);font-weight:700">${cur?disp(cur.kg)+' '+unit():'—'}</span></div></div>
     <div style="margin-top:14px">${chart(l)}</div>
     <div class="grid3" style="margin-top:12px"><div class="tile"><b style="font-size:18px">${ch(ago(7))}</b><span>7 days</span></div><div class="tile"><b style="font-size:18px">${ch(ago(30))}</b><span>30 days</span></div><div class="tile"><b style="font-size:18px">${l.length}</b><span>weigh-ins</span></div></div></section>
-  <section class="glass card"><h2>Log a weigh-in</h2><div class="row" style="align-items:flex-end"><label class="f" style="flex:1">Weight (${unit()})<input type="number" inputmode="decimal" step="any" id="bw-val" placeholder="${cur?disp(cur.kg):'0'}"></label><label class="f" style="flex:1">Date<input type="date" id="bw-date" value="${ymd(Date.now())}" max="${ymd(Date.now())}"></label></div><button class="btn primary block" style="margin-top:12px" data-a="add-weight">Save weigh-in</button></section>
-  ${isEmpty()||!l.length?'':`<section class="glass card"><h2>Entries</h2><div class="list">${l.slice().reverse().slice(0,30).map(w=>`<div class="row between"><span>${niceDate(w.d+'T12:00')}</span><div class="row"><span class="num" style="font-weight:700">${disp(w.kg)} ${unit()}</span><button class="btn sm danger" data-a="del-weight" data-v="${w.d}" aria-label="Delete weigh-in from ${w.d}">Delete</button></div></div>`).join('')}</div></section>`}`}
+  <section class="glass card"><h2>Log a weigh-in</h2><div class="row" style="align-items:flex-end"><label class="f" style="flex:1">Weight (${unit()})<input type="number" inputmode="decimal" step="any" id="bw-val" placeholder="${cur?disp(cur.kg):'0'}"></label><label class="f" style="flex:1">Date<input type="date" id="bw-date" value="${ymd(Date.now())}" max="${ymd(Date.now())}"></label></div><div class="row" style="margin-top:12px"><button class="btn primary" style="flex:1;padding:0 10px" data-a="add-weight">Save weigh-in</button><label class="btn" style="flex:1;padding:0 10px" id="bw-photo-lbl">Save with photo<input type="file" id="bw-photo" accept="image/*" hidden></label></div></section>
+  ${photoCard(l)}
+  ${isEmpty()||!l.length?'':`<section class="glass card"><h2>Entries</h2><div class="list">${l.slice().reverse().slice(0,30).map(w=>`<div class="row between"><span>${niceDate(w.d+'T12:00')}</span><div class="row"><span class="num" style="font-weight:700">${disp(w.kg)} ${unit()}</span>${w.p?`<button class="btn sm" data-a="photo" data-v="${w.d}">Photo</button>`:''}<button class="btn sm danger" data-a="del-weight" data-v="${w.d}" aria-label="Delete weigh-in from ${w.d}">Delete</button></div></div>`).join('')}</div></section>`}`}
 
-function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body})[tab]());tick()}
+/* ================= progress photos ================= */
+/* Photos are shrunk on the phone, kept in the browser's IndexedDB, and (when signed in) copied to users/<id>/photos/<date> so they are only downloaded when viewed. */
+let idbP=null;const phCache={};
+function idbOpen(){return idbP||(idbP=new Promise((res,rej)=>{const r=indexedDB.open('apex',1);r.onupgradeneeded=()=>r.result.createObjectStore('photos');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}))}
+async function idbDo(mode,fn){const d=await idbOpen();return new Promise((res,rej)=>{const tx=d.transaction('photos',mode),rq=fn(tx.objectStore('photos'));tx.oncomplete=()=>res(rq&&rq.result);tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)})}
+const phPending=()=>{try{return JSON.parse(localStorage.getItem(LS+'.phpend')||'[]')}catch(e){return[]}},phMark=(d,on)=>{try{const s=new Set(phPending());on?s.add(d):s.delete(d);localStorage.setItem(LS+'.phpend',JSON.stringify([...s]))}catch(e){}};
+async function phGet(d){if(phCache[d])return phCache[d];let v=null;try{v=await idbDo('readonly',s=>s.get(d))}catch(e){}
+  if(!v&&cloudReady){try{const sn=await fb.F.getDoc(fb.F.doc(fb.db,'users',fbUser.uid,'photos',d));if(sn.exists()){v=sn.data();idbDo('readwrite',s=>s.put(v,d)).catch(()=>{})}}catch(e){}}
+  if(v)phCache[d]=v;return v}
+async function phPush(d){if(!cloudReady)return;try{const v=await phGet(d);if(v)await fb.F.setDoc(fb.F.doc(fb.db,'users',fbUser.uid,'photos',d),{d,img:v.img,th:v.th});phMark(d,false)}catch(e){}}
+function phFlush(){phPending().forEach(phPush)}
+async function phSave(d,file){const img=await shrink(file,1280,.72),th=await shrink(file,260,.7),v={d,img,th};phCache[d]=v;await idbDo('readwrite',s=>s.put(v,d));phMark(d,true);phPush(d)}
+function phRemove(d){delete phCache[d];phMark(d,false);idbDo('readwrite',s=>s.delete(d)).catch(()=>{});if(cloudReady)fb.F.deleteDoc(fb.F.doc(fb.db,'users',fbUser.uid,'photos',d)).catch(()=>{})}
+function shrink(file,max,q){return new Promise((res,rej)=>{const url=URL.createObjectURL(file),im=new Image();im.onload=()=>{try{const k=Math.min(1,max/Math.max(im.width,im.height)),c=document.createElement('canvas');c.width=Math.round(im.width*k);c.height=Math.round(im.height*k);c.getContext('2d').drawImage(im,0,0,c.width,c.height);URL.revokeObjectURL(url);res(c.toDataURL('image/jpeg',q))}catch(e){rej(e)}};im.onerror=()=>{URL.revokeObjectURL(url);rej(new Error('image'))};im.src=url})}
+function fillPhotos(){document.querySelectorAll('img[data-ph]').forEach(async im=>{if(im.dataset.done)return;im.dataset.done='1';const v=await phGet(im.dataset.ph);if(!v){im.alt='Photo not available on this device yet';return}if(im.dataset.full)im.onload=()=>sheetMeasure(true);im.src=im.dataset.full?v.img:v.th})}
+function photoCard(l){const ph=l.filter(w=>w.p).reverse();if(isEmpty()||!ph.length)return '';
+  return `<section class="glass card"><h2>Progress photos${ph.length>1?'<button class="btn sm" data-a="photo-compare">Compare</button>':''}</h2><div class="phstrip">${ph.slice(0,20).map(w=>`<button class="ph" data-a="photo" data-v="${w.d}"><img data-ph="${w.d}" alt="Progress photo from ${w.d}"><span class="small muted num">${new Date(w.d+'T12:00').toLocaleDateString(undefined,{day:'numeric',month:'short'})} · ${disp(w.kg)}</span></button>`).join('')}</div></section>`}
+function photoSheet(d){const w=S.weights.find(x=>x.d===d);if(!w)return;openSheet(`<h2 style="margin-bottom:2px">${niceDate(d+'T12:00')}</h2><p>${disp(w.kg)} ${unit()}</p><div class="stack"><img class="phfull" data-ph="${d}" data-full="1" alt="Progress photo from ${d}"><button class="btn block danger" data-a="photo-del" data-v="${d}">Remove this photo</button></div>`,'photo');fillPhotos()}
+function compareSheet(){const ph=S.weights.filter(w=>w.p);if(ph.length<2)return;const a=ph[0],b=ph[ph.length-1],fig=w=>`<div style="flex:1;min-width:0"><img class="phfull" data-ph="${w.d}" data-full="1" alt="Progress photo from ${w.d}"><div class="small muted num" style="margin-top:6px;text-align:center">${niceDate(w.d+'T12:00')}<br>${disp(w.kg)} ${unit()}</div></div>`;
+  openSheet(`<h2>First and latest</h2><div class="row" style="align-items:flex-start">${fig(a)}${fig(b)}</div><p class="small" style="margin-top:12px">Change between them: ${(b.kg-a.kg>0?'+':'')+disp(b.kg-a.kg)} ${unit()}.</p>`,'photo');fillPhotos()}
+function saveWeigh(val,d,hasPhoto){const old=S.weights.find(w=>w.d===d),e={d,kg:Math.round(toKg(val)*100)/100};if(hasPhoto||(old&&old.p))e.p=1;S.weights=S.weights.filter(w=>w.d!==d);S.weights.push(e);S.weights.sort((a,b)=>a.d<b.d?-1:1);save('weights');render()}
+
+function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body})[tab]());tick();if(tab==='body')fillPhotos()}
 function go(t){const ix=k=>SCREENS.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
   /* leave a copy of the old screen behind for a moment so it can fade and slide away while the new one arrives */
   try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),300)}}catch(e){}
@@ -637,7 +664,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   nav.addEventListener('touchend',endDrag);nav.addEventListener('touchcancel',endDrag);
   /* swipe left or right anywhere on a screen to move between docked screens */
   let sw=null;
-  view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input,select')?null:{x:t.clientX,y:t.clientY}},{passive:true});
+  view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input,select,.phstrip')?null:{x:t.clientX,y:t.clientY}},{passive:true});
   view.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;sw=null;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.8)return;
     const o=swipeOrder(),n=o.indexOf(tab)+(dx<0?1:-1);if(n<0||n>=o.length)return;haptic();go(o[n])},{passive:true});
   /* pull the launcher back down into the dock */
@@ -662,7 +689,8 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   sh.addEventListener('touchend',endSheet);sh.addEventListener('touchcancel',endSheet)}
 
 /* ================= events ================= */
-document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(ev.target.id==='scrim'){closeSheet();return}if(ev.target.id==='lscrim'){launcherClose();return}if(!b)return;const a=b.dataset.a,v=b.dataset.v,x=+b.dataset.x,s=+b.dataset.s;
+document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');
+  if(ev.target.closest('#bw-photo-lbl')&&ev.target.id!=='bw-photo'&&!(parseFloat($('#bw-val').value)>0)){ev.preventDefault();toast('Enter your weight first, then add the photo.');return}if(ev.target.id==='scrim'){closeSheet();return}if(ev.target.id==='lscrim'){launcherClose();return}if(!b)return;const a=b.dataset.a,v=b.dataset.v,x=+b.dataset.x,s=+b.dataset.s;
   if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
   if((a==='open'||a==='launcher')&&b.closest('#nav')&&Date.now()-lastTabDrag<450)return;
   haptic();
@@ -685,7 +713,7 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(
   case 'signup':authGo(true);break;
   case 'signout':fb.U.signOut(fb.auth);toast('Signed out. Your data stays on this device.');break;
   case 'export':exportBackup();break;
-  case 'wipe':confirmSheet('Delete all data?','This removes every workout, weigh-in, routine and custom exercise. Export a backup first if you might want it back.','Delete everything',()=>{S={settings:S.settings,custom:[],routines:[],weights:[],workouts:[],active:null};saveAll();go('home');toast('All data deleted.')});break;
+  case 'wipe':confirmSheet('Delete all data?','This removes every workout, weigh-in, progress photo, routine and custom exercise. Export a backup first if you might want it back.','Delete everything',()=>{S.weights.filter(w=>w.p).forEach(w=>phRemove(w.d));S={settings:S.settings,custom:[],routines:[],weights:[],workouts:[],active:null};saveAll();go('home');toast('All data deleted.')});break;
   case 'start':startWorkout();break;
   case 'repeat':{const l=S.workouts[S.workouts.length-1];startWorkout(l.exercises.map(e=>e.exId),l.name);break}
   case 'start-routine':{const r=S.routines.find(r=>r.id===v);r&&startWorkout(r.exIds,r.name);break}
@@ -707,8 +735,11 @@ document.addEventListener('click',ev=>{const b=ev.target.closest('[data-a]');if(
   case 'ex':exSheet(v);break;
   case 'login':loginSheet();break;
   case 'del-workout':confirmSheet('Delete this workout?','Records and ranks are recalculated without it.','Delete',()=>{const w=S.workouts.find(w=>w.id===v);S.workouts=S.workouts.filter(w=>w.id!==v);recomputePRs(S.workouts);save(monthKey(w.start));render()});break;
-  case 'add-weight':{const val=parseFloat($('#bw-val').value),d=$('#bw-date').value||ymd(Date.now());if(!(val>0)){toast('Enter your weight first.');break}S.weights=S.weights.filter(w=>w.d!==d);S.weights.push({d,kg:Math.round(toKg(val)*100)/100});S.weights.sort((a,b)=>a.d<b.d?-1:1);save('weights');render();toast('Weigh-in saved.');break}
-  case 'del-weight':S.weights=S.weights.filter(w=>w.d!==v);save('weights');render();break;
+  case 'add-weight':{const val=parseFloat($('#bw-val').value),d=$('#bw-date').value||ymd(Date.now());if(!(val>0)){toast('Enter your weight first.');break}saveWeigh(val,d,false);toast('Weigh-in saved.');break}
+  case 'del-weight':{const w=S.weights.find(w=>w.d===v);if(w&&w.p)phRemove(v);S.weights=S.weights.filter(w=>w.d!==v);save('weights');render();break}
+  case 'photo':photoSheet(v);break;
+  case 'photo-compare':compareSheet();break;
+  case 'photo-del':{const w=S.weights.find(w=>w.d===v);if(w){delete w.p;save('weights')}phRemove(v);closeSheet();render();toast('Photo removed. The weigh-in is kept.');break}
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
@@ -718,7 +749,10 @@ document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(!i)ret
   else if(i==='wname'){S.active.name=t.value;save('active')}
   else if(i==='pickq'){pickQuery=t.value;const q=pickQuery.trim().toLowerCase();$('#pick-list').innerHTML=pickRows(allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q))))}
   else if(i==='plates'){const v=parseFloat($('#pl-v').value)||0,b=parseFloat($('#pl-b').value)||0,id=t.id,pos=t.selectionStart;platesSheet(v,b);const el=$('#'+id);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}});
-document.addEventListener('change',ev=>{const t=ev.target;if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
+document.addEventListener('change',ev=>{const t=ev.target;
+  if(t.id==='bw-photo'){const f=t.files&&t.files[0],val=parseFloat($('#bw-val').value),d=$('#bw-date').value||ymd(Date.now());if(!f)return;if(!(val>0)){toast('Enter your weight first, then add the photo.');return}
+    toast('Saving photo…');phSave(d,f).then(()=>{saveWeigh(val,d,true);toast('Weigh-in and photo saved.')}).catch(()=>{saveWeigh(val,d,false);toast('Weigh-in saved, but the photo could not be read.')});return}
+  if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'){closeSheet();launcherClose()}else if((ev.key==='Enter'||ev.key===' ')&&ev.target.matches&&ev.target.matches('div[role=button]')){ev.preventDefault();ev.target.click()}});
 
 /* ================= boot ================= */
