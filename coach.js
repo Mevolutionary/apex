@@ -59,6 +59,13 @@ function coachPlan(){const c=coachCfg(),{t,pri,lagM,lag}=coachTargets(),names=SP
   return coachOrder(c).map(i=>built[i])}
 /* The order of sessions in the week is the person's choice; it defaults to the split's usual order. */
 function coachOrder(c){const n=(SPLITS[c.days]||SPLITS[4]).length,o=(c.order||{})[c.days];return Array.isArray(o)&&o.length===n&&o.slice().sort().join()===[...Array(n).keys()].join()?o:[...Array(n).keys()]}
+/* Deload hint: two or more lifts whose best set has slipped over the last two sessions, or eight straight weeks of three or more workouts. */
+function deloadHint(){if(isEmpty())return'';const by={};S.workouts.forEach(w=>w.exercises.forEach(e=>{const ex=exById(e.exId);let sc=0;e.sets.forEach(q=>{sc=Math.max(sc,score(ex,q))});(by[e.exId]=by[e.exId]||[]).push(sc)}));
+  const stalled=Object.keys(by).filter(id=>{const l=by[id].slice(-4);return by[id].length>=5&&Math.max(l[2],l[3])<Math.max(l[0],l[1])*.98});
+  let wk=0;for(let i=1;i<=26;i++){const from=weekStart()-i*7*DAY;if(S.workouts.filter(w=>w.start>=from&&w.start<from+7*DAY).length>=3)wk++;else break}
+  if(stalled.length<2&&wk<8)return'';
+  const why=stalled.length>=2?`${stalled.slice(0,3).map(id=>esc(exById(id).name)).join(', ')} ${stalled.length>1?'have':'has'} slipped over the last two sessions`:`you have trained three or more times a week for ${wk} weeks running`;
+  return `<section class="glass card"><h2>Consider a lighter week</h2><div class="small" style="margin-top:-4px">${why[0].toUpperCase()+why.slice(1)}. A deload usually means keeping the weight on the bar but doing about half your usual sets for one week, then returning to normal.</div><div class="small muted" style="margin-top:8px">Research on planned deloads is limited, so this is a prompt based on how your lifts are moving, not a rule. Poor sleep, food or stress can cause the same dip.</div></section>`}
 function nextDay(plan){const done=S.workouts.filter(w=>w.start>=weekStart()).length;return plan.length?done%plan.length:0}
 
 /* ================= screens ================= */
@@ -72,6 +79,7 @@ function coach(){const c=coachCfg(),{sets,weeks,n}=muscleSets(),{t,pri,lag}=coac
     ${n?`<div class="bars">${rows}</div><div class="small muted" style="margin-top:12px">Your average over the last ${weeks<1.5?'week':Math.round(weeks)+' weeks'} against the target for your goal. The white line is the target${pri.size?', and ★ marks the muscles your goal puts first':''}. Sets for other muscles in the same lift count as half.</div>
     ${under.length?`<div class="tile small" style="margin-top:12px"><strong>Not hitting:</strong> ${under.map(m=>`${m.toLowerCase()} (${Math.round((t[m]-(sets[m]||0))*10)/10} sets short)`).join(', ')}. The plan below is built to close these first.</div>`:'<div class="tile small" style="margin-top:12px">Every muscle is at or near its target. The plan below keeps it that way.</div>'}`
     :'<div class="muted small">No workouts logged in the last 4 weeks, so there is nothing to compare yet. The plan below is a starting point built from the targets for your goal. It adapts as you log.</div>'}</section>
+  ${deloadHint()}
   ${lag.length?`<section class="glass card"><h2>Lagging lifts</h2><div class="list">${lag.map(l=>`<div class="row between tap" data-a="ex" data-v="${l.id}"><span>${esc(exById(l.id).name)}</span><span class="small muted">${TIERS[l.tier][0]}, ${l.best-l.tier} tiers below your best lift</span></div>`).join('')}</div><div class="small muted" style="margin-top:10px">These get extra sets and lead their sessions.</div></section>`:''}
   ${plan.map((d,i)=>`<section class="glass card"><h2>${d.name}${i===nx?'<span class="pr">Up next</span>':''}</h2><div class="small muted" style="margin-top:-6px">${d.sets} sets · about ${d.mins} minutes</div>
     <div class="list" style="margin-top:12px">${d.items.map((x,j)=>`<button class="crow" data-a="coach-why" data-v="${i}.${j}"><span style="min-width:0"><span style="font-weight:600">${esc(exById(x.id).name)}</span><span class="small muted" style="display:block">${suggestLoad(x.id,x.lo,x.hi)}</span></span><span class="num" style="font-weight:800;white-space:nowrap">${x.sets} × ${x.lo}–${x.hi}</span></button>`).join('')}</div>
