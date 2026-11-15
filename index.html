@@ -787,7 +787,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   la.addEventListener('touchstart',e=>{ld=L.open?{y:e.touches[0].clientY,h0:lHeight(L.full?2:1),top:$('#linner').scrollTop<=0,on:false,dy:0,v:0,ly:e.touches[0].clientY,lt:Date.now()}:null},{passive:true});
   la.addEventListener('touchmove',e=>{if(!ld)return;const cy=e.touches[0].clientY,now=Date.now(),dy=cy-ld.y;if(now>ld.lt){ld.v=ld.v*.4+(cy-ld.ly)/(now-ld.lt)*.6;ld.ly=cy;ld.lt=now}if(!ld.on){if(Math.abs(dy)<8)return;if(dy<0&&(L.full||L.HF-L.H<=24)){ld=null;return}if(dy>0&&!ld.top){ld=null;return}ld.on=true}
     e.preventDefault();ld.dy=dy;launcherSet(lFromH(ld.h0-dy),false)},{passive:false});
-  const endL=()=>{if(!ld)return;const d=ld;ld=null;if(!d.on)return;const v=Date.now()-d.lt>120?0:d.v,landing=d.h0-d.dy-coast(v),stops=[[0,lHeight(0)],[1,lHeight(1)]].concat(L.HF-L.H>24?[[2,lHeight(2)]]:[]),to=stops.reduce((a,b)=>Math.abs(b[1]-landing)<Math.abs(a[1]-landing)?b:a)[0];
+  const endL=()=>{if(!ld)return;const d=ld;ld=null;if(!d.on)return;const v=Date.now()-d.lt>120?0:d.v,landing=d.h0-d.dy-coast(v),stops=[[1,lHeight(1)]].concat(L.HF-L.H>24?[[2,lHeight(2)]]:[]),to=landing<lHeight(1)-Math.min((lHeight(1)-lHeight(0))/2,160)?0:stops.reduce((a,b)=>Math.abs(b[1]-landing)<Math.abs(a[1]-landing)?b:a)[0];
     if(to===0){launcherClose();return}L.full=to===2;haptic();launcherSet(to,true)};
   la.addEventListener('touchend',endL);la.addEventListener('touchcancel',endL);
   /* sheets: pull up for full screen, pull down to shrink or dismiss */
@@ -798,7 +798,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
     e.preventDefault();sd.dy=dy;const hh=sd.h0-dy;sh.style.transition='none';sh.classList.add('dragging');sh.style.setProperty('--p',SH.hMax>SH.hN?Math.max(0,Math.min(1,(hh-SH.hN)/(SH.hMax-SH.hN))).toFixed(3):'0');
     if(hh>=SH.hN){sh.style.height=Math.min(SH.hMax,hh)+'px';sh.style.transform=''}else{sh.style.height=SH.hN+'px';sh.style.transform='translateY('+(SH.hN-hh)+'px)'}},{passive:false});
   const endSheet=()=>{if(!sd)return;const d=sd;sd=null;if(!d.on)return;sh.classList.remove('dragging');const hh=d.h0-d.dy;
-    const v=Date.now()-d.lt>120?0:d.v,landing=hh-coast(v),stops=[0,SH.hN].concat(SH.canFull?[SH.hMax]:[]),to=stops.reduce((a,b)=>Math.abs(b-landing)<Math.abs(a-landing)?b:a);
+    const v=Date.now()-d.lt>120?0:d.v,landing=hh-coast(v),stops=[SH.hN].concat(SH.canFull?[SH.hMax]:[]),to=landing<SH.hN-Math.min(SH.hN/2,160)?0:stops.reduce((a,b)=>Math.abs(b-landing)<Math.abs(a-landing)?b:a); /* closes once it would land more than 160px (or half its height) below resting */
     if(to===0){haptic();dismissSheet();return}
     SH.full=SH.canFull&&to===SH.hMax;
     sh.style.transition='height .5s cubic-bezier(.22,1.02,.32,1),transform .4s cubic-bezier(.22,1.02,.32,1)';sh.style.transform='';const t=SH.full?SH.hMax:SH.hN;sh.style.height=t+'px';sh.dataset.h=t;sh.style.setProperty('--p',SH.full?'1':'0');haptic()};
