@@ -295,7 +295,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.50';
+const LB=2.20462, DAY=864e5, VERSION='0.51';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -1012,7 +1012,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
-  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
+  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
   }});
 document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
@@ -1028,7 +1028,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 /* ================= boot ================= */
 </script>
 <script>/* the version in the address lets the service worker keep these files and serve them instantly; a new version asks for new addresses */
-['nutrition','coach','summary','studies','board'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
+['nutrition','meals','coach','summary','studies','board'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
 <script>
 function vfix(){let g=0;try{const st=matchMedia('(display-mode:standalone)').matches||navigator.standalone,port=innerHeight>=innerWidth,full=port?Math.max(screen.height,screen.width):Math.min(screen.height,screen.width);g=full-innerHeight;if(!st||g<8||g>90)g=0}catch(e){}document.documentElement.style.setProperty('--vgap',g+'px');window.vgap=g}
 vfix();addEventListener('resize',vfix);addEventListener('orientationchange',()=>setTimeout(vfix,300));

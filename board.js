@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.51',['Saved meals: log a regular meal in one tap','Copy a whole day or one meal','Favourite foods with a star','Water tracking','Weekly nutrition report','Describe what you ate and let AI log it']],
   ['0.50',['Opt-in Leaderboard for invited friends','Show button on every password box','Terms of use, agreed to when creating an account','Your AI key is now stored encrypted on the device','These patch notes']],
   ['0.49',['Set types: warm-up, drop set, to failure','Supersets, notes and rest time per exercise','Swap an exercise, add cardio','Coach suggests a lighter week when lifts slip']],
   ['0.48',['Settings organised into eight tabs','Smoother dock when the all-features panel drops','No more accidental zoom on quick taps']],
