@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
 <title>Apex</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -294,7 +295,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.49';
+const LB=2.20462, DAY=864e5, VERSION='0.50';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -376,15 +377,16 @@ async function pull(){if(!fb||!fbUser||pulling)return;if(Object.keys(pend).lengt
   }catch(e){if(e&&e.code==='permission-denied'){cloudState='blocked';blockReason=fbUser&&fbUser.emailVerified?'invite':'verify';if(tab==='home')render()}else cloudState='error'}
   pulling=false;refreshSettings()}
 function loginSheet(){openSheet(`<h2>Sign in to keep your training</h2><p>Right now everything is stored only on this device. Sign in and it backs up automatically and stays in step across your phone and computer. New here? Enter an email and a password, then choose Create account.</p>
-  <div class="stack"><input type="text" inputmode="email" autocomplete="email" autocapitalize="off" id="au-email" placeholder="Email"><input type="password" autocomplete="current-password" id="au-pass" placeholder="Password">
+  <div class="stack"><input type="text" inputmode="email" autocomplete="email" autocapitalize="off" id="au-email" placeholder="Email"><input type="password" autocomplete="current-password" id="au-pass" placeholder="Password"><div class="tick small"><div role="button" tabindex="0" class="check" id="au-terms" data-a="terms-tick" aria-pressed="false" aria-label="I agree to the terms of use"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><span>New here? Tick to agree to the <button class="info" data-a="terms">terms of use</button> before creating an account.</span></div>
   <div class="row"><button class="btn" style="flex:1" data-a="signup">Create account</button><button class="btn primary" style="flex:1" data-a="signin">Sign in</button></div><div class="row between"><button class="info" data-a="forgot">Forgot password</button><button class="info" data-a="close">Not now</button></div></div>`,'login')}
 function maybeAskLogin(){try{if(localStorage.getItem(LS+'.loginAsked'))return;localStorage.setItem(LS+'.loginAsked','1')}catch(e){return}
   setTimeout(()=>{if(cloudState==='signedout'&&!S.active&&!$('#scrim').classList.contains('on')&&!L.open)loginSheet()},1400)}
 function refreshSettings(){if($('#scrim').classList.contains('on')&&$('#sheet').dataset.kind==='settings')settingsSheet()}
 const AUTHMSG={'auth/too-many-requests':'Too many attempts. Wait a few minutes and try again.','auth/requires-recent-login':'Sign out, sign back in, then try again.','auth/invalid-credential':'Wrong email or password.','auth/wrong-password':'Wrong email or password.','auth/user-not-found':'No account with that email. Use Create account.','auth/email-already-in-use':'That email already has an account. Use Sign in.','auth/weak-password':'Use a password of at least 6 characters.','auth/invalid-email':'That email address does not look right.','auth/network-request-failed':'No connection. Try again when you are online.','auth/operation-not-allowed':'Email sign-in is not switched on in your Firebase project yet.'};
 async function authGo(create){const em=$('#au-email').value.trim(),pw=$('#au-pass').value;if(!em||!pw){toast('Enter your email and a password.');return}
+  if(create){if(pw.length<8){toast('Choose a password of at least 8 characters.');return}const tk=$('#au-terms');if(tk&&!tk.classList.contains('on')){toast('Tick the box to agree to the terms of use first.');return}}
   try{const cred=await (create?fb.U.createUserWithEmailAndPassword:fb.U.signInWithEmailAndPassword)(fb.auth,em,pw);
-    if(create){try{await fb.U.sendEmailVerification(cred.user)}catch(e){}}
+    if(create){try{await fb.U.sendEmailVerification(cred.user)}catch(e){}S.settings.terms={v:typeof TERMS_V==='number'?TERMS_V:1,at:Date.now()};localSave()}
     toast(create?'Account created. Check your inbox for a verification email.':'Signed in.');if($('#sheet').dataset.kind==='login')closeSheet();
     vaultOpen(pw).catch(()=>{})}catch(e){toast(AUTHMSG[e&&e.code]||'Could not sign in. Check your details and try again.')}}
 async function forgotPassword(){const em=($('#au-email')||{}).value;if(!em||!em.trim()){toast('Type your email in the box first.');return}
@@ -659,7 +661,7 @@ function compareSheet(){const ph=S.weights.filter(w=>w.p);if(ph.length<2)return;
   openSheet(`<h2>First and latest</h2><div class="row" style="align-items:flex-start">${fig(a)}${fig(b)}</div><p class="small" style="margin-top:12px">Change between them: ${(b.kg-a.kg>0?'+':'')+disp(b.kg-a.kg)} ${unit()}.</p>`,'photo');fillPhotos()}
 function saveWeigh(val,d,hasPhoto){const old=S.weights.find(w=>w.d===d),e={d,kg:Math.round(toKg(val)*100)/100};if(hasPhoto||(old&&old.p))e.p=1;S.weights=S.weights.filter(w=>w.d!==d);S.weights.push(e);S.weights.sort((a,b)=>a.d<b.d?-1:1);save('weights');render()}
 
-function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body,food,coach,studies})[tab]());tick();if(tab==='body')fillPhotos()}
+function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body,food,coach,studies,board:typeof boardScreen==='function'?boardScreen:home})[tab]());tick();if(tab==='body')fillPhotos()}
 function go(t){const ix=k=>SCREENS.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
   /* leave a copy of the old screen behind for a moment so it can fade and slide away while the new one arrives */
   try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),300)}}catch(e){}
@@ -746,7 +748,7 @@ function settingsSheet(){
   const sync={off:'<div class="tile small">Your data is saved on this phone. Cloud sync is not set up yet, so export a backup now and then.</div>',
     connecting:'<div class="tile small">Connecting to cloud sync…</div>',
     error:'<div class="tile small">Cloud sync cannot connect right now. Changes are kept on this device and sync when you are back online. <button class="info" data-a="sync-now">Try again</button></div>',
-    signedout:'<div class="tile stack"><div class="small muted">Sign in to sync between your phone and computer. Use the same email and password on each device.</div><input type="text" inputmode="email" autocomplete="email" autocapitalize="off" id="au-email" placeholder="Email"><input type="password" autocomplete="current-password" id="au-pass" placeholder="Password"><div class="row"><button class="btn sm" style="flex:1" data-a="signin">Sign in</button><button class="btn sm" style="flex:1" data-a="signup">Create account</button></div><button class="info" data-a="forgot">Forgot password</button></div>',
+    signedout:'<div class="tile stack"><div class="small muted">Sign in to sync between your phone and computer. Use the same email and password on each device.</div><input type="text" inputmode="email" autocomplete="email" autocapitalize="off" id="au-email" placeholder="Email"><input type="password" autocomplete="current-password" id="au-pass" placeholder="Password"><div class="tick small"><div role="button" tabindex="0" class="check" id="au-terms" data-a="terms-tick" aria-pressed="false" aria-label="I agree to the terms of use"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div><span>New here? Tick to agree to the <button class="info" data-a="terms">terms of use</button> before creating an account.</span></div><div class="row"><button class="btn sm" style="flex:1" data-a="signin">Sign in</button><button class="btn sm" style="flex:1" data-a="signup">Create account</button></div><button class="info" data-a="forgot">Forgot password</button></div>',
     blocked:blockReason==='verify'?`<div class="tile stack"><div class="small">Almost there. Open the verification email sent to ${esc(fbUser&&fbUser.email||'your address')} and tap its link. Until then your data stays on this device.</div><div class="row"><button class="btn sm" style="flex:1" data-a="verify-check">I have verified</button><button class="btn sm" style="flex:1" data-a="verify-resend">Resend email</button></div><button class="info" data-a="signout">Sign out</button></div>`:`<div class="tile stack"><div class="small">${esc(fbUser&&fbUser.email||'This address')} is not on the invite list yet. Ask the person who shared Apex with you to add it. Until then your data stays on this device.</div><div class="row"><button class="btn sm" style="flex:1" data-a="sync-now">Try again</button><button class="btn sm" style="flex:1" data-a="signout">Sign out</button></div></div>`,
     synced:`<div class="tile small row between"><span style="min-width:0;overflow-wrap:anywhere">Syncing as ${esc(fbUser&&fbUser.email||'')}</span><button class="btn sm" data-a="signout">Sign out</button></div>
     ${isOwner?'<button class="btn block" data-a="invites">Invite friends</button>':''}`}[cloudState];
@@ -768,6 +770,8 @@ function settingsSheet(){
       <div class="tile small row between"><span>${isApp()?'On your Home Screen':'Add Apex to your Home Screen'}</span><button class="btn sm" data-a="install-guide">${isApp()?'Share':'Show me how'}</button></div>
       <div class="tile small">Apple Health and other watches cannot connect to a web app directly. The Apple Watch option works through a shortcut.</div>`,
     about:`<div class="tile small row between"><span>Apex ${VERSION}</span><button class="btn sm" data-a="check-update">Check for updates</button></div>
+      <div class="tile small row between"><span>What changed in each version</span><button class="btn sm" data-a="notes">Patch notes</button></div>
+      <div class="tile small row between"><span>Terms of use</span><button class="btn sm" data-a="terms">Read</button></div>
       <p class="small muted" style="margin:0;font-size:11px">Screen ${innerWidth}×${innerHeight} of ${screen.width}×${screen.height} · fill ${window.vgap||0} · app ${(matchMedia('(display-mode:standalone)').matches||navigator.standalone)?'yes':'no'}</p>`,
     food:typeof nutSettingsRow==='function'?nutSettingsRow():'',
     account:sync+acct+(fbUser?'<button class="btn block danger" data-a="delete-sheet">Delete my account</button>':''),
@@ -801,7 +805,7 @@ function finish(){const a=S.active;const exs=a.exercises.map(e=>{const done=e.se
   const tiers=()=>isEmpty()?{}:Object.fromEntries(Object.keys(STD).map(k=>[k,(rankFor(k)||{}).tier])),before=tiers();
   const w={id:a.id,name:a.name.trim()||'Workout',start:a.start,end:Date.now(),exercises:exs};if(cardio.length)w.cardio=cardio;S.workouts.push(w);S.active=null;stopRest();recomputePRs(S.workouts);
   const after=tiers(),up=Object.keys(after).filter(k=>after[k]!=null&&(before[k]==null?after[k]>0:after[k]>before[k])).map(k=>({id:k,from:before[k]??null,to:after[k]}));if(up.length)w.up=up;
-  save(monthKey(w.start),'active');go('history');expanded=w.id;render();summarySheet(w.id,true);if(watchOn())setTimeout(()=>toast('End the workout on your Apple Watch too.'),1400)}
+  save(monthKey(w.start),'active');go('history');expanded=w.id;render();summarySheet(w.id,true);if(typeof boardPublish==='function')boardPublish(true);if(watchOn())setTimeout(()=>toast('End the workout on your Apple Watch too.'),1400)}
 let cardioType='Run';
 function cardioSheet(){openSheet(`<h2>Add cardio</h2><div class="stack"><div class="row wrap" style="gap:8px">${CARDIO.map(c=>`<button class="chip ${c===cardioType?'on':''}" data-a="cardio-type" data-v="${c}">${c}</button>`).join('')}</div>
   <div class="row" style="gap:10px"><label style="flex:1"><span class="small muted">Minutes</span><input type="number" inputmode="numeric" id="cd-mins" placeholder="20"></label><label style="flex:1"><span class="small muted">Distance (${S.settings.unit==='lb'?'mi':'km'}), optional</span><input type="number" inputmode="decimal" step="any" id="cd-dist" placeholder="0"></label></div>
@@ -948,7 +952,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'sync-now':fb?pull():initCloud();break;
   case 'signin':authGo(false);break;
   case 'signup':authGo(true);break;
-  case 'signout':lsDel('.gk');lsDel('.gm');fb.U.signOut(fb.auth);toast('Signed out. Your data stays on this device.');break;
+  case 'signout':if(typeof gForget==='function')gForget();fb.U.signOut(fb.auth);toast('Signed out. Your data stays on this device.');break;
   case 'forgot':forgotPassword();break;
   case 'verify-check':verifyCheck();break;
   case 'verify-resend':fb.U.sendEmailVerification(fbUser).then(()=>toast('Verification email sent.')).catch(()=>toast('Could not send it yet. Wait a minute and try again.'));break;
@@ -1008,7 +1012,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
-  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);
+  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
   }});
 document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
@@ -1024,11 +1028,11 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 /* ================= boot ================= */
 </script>
 <script>/* the version in the address lets the service worker keep these files and serve them instantly; a new version asks for new addresses */
-['nutrition','coach','summary','studies'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
+['nutrition','coach','summary','studies','board'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
 <script>
 function vfix(){let g=0;try{const st=matchMedia('(display-mode:standalone)').matches||navigator.standalone,port=innerHeight>=innerWidth,full=port?Math.max(screen.height,screen.width):Math.min(screen.height,screen.width);g=full-innerHeight;if(!st||g<8||g>90)g=0}catch(e){}document.documentElement.style.setProperty('--vgap',g+'px');window.vgap=g}
 vfix();addEventListener('resize',vfix);addEventListener('orientationchange',()=>setTimeout(vfix,300));
-uiApply();localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();if(pinGet())lockShow();initCloud();
+uiApply();localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();if(typeof notesBoot==='function')notesBoot();if(pinGet())lockShow();initCloud();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(location.protocol==='https:')setTimeout(()=>checkUpdate(false),2500);
 </script>

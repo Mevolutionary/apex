@@ -42,6 +42,18 @@ service cloud.firestore {
       allow get: if request.auth != null && request.auth.token.email == email;
       allow read, write: if owner();
     }
+    // Opt-in leaderboard: each member may write only their own entry, with only these five fields.
+    match /board/{uid} {
+      allow read: if owner() || invited();
+      allow create, update: if request.auth != null && request.auth.uid == uid && (owner() || invited())
+        && request.resource.data.keys().hasOnly(['name','tier','prog','week','at'])
+        && request.resource.data.name is string && request.resource.data.name.size() >= 1 && request.resource.data.name.size() <= 24
+        && request.resource.data.tier is int && request.resource.data.tier >= -1 && request.resource.data.tier <= 6
+        && request.resource.data.prog is number && request.resource.data.prog >= 0 && request.resource.data.prog <= 1
+        && request.resource.data.week is int && request.resource.data.week >= 0 && request.resource.data.week <= 21
+        && request.resource.data.at is number;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
   }
 }
 ```

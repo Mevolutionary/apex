@@ -224,9 +224,19 @@ async function lookupCode(code){code=String(code||'').replace(/\D/g,'');if(code.
 /* AI features need a signed-in account: the key belongs to the account, is synced encrypted, and is removed from the device on sign-out. */
 const aiAllowed=()=>!!fbUser&&cloudState!=='blocked';
 function aiGate(){const blocked=!!fbUser&&cloudState==='blocked';openSheet(`<h2>Sign in to use AI features</h2><p>For security, AI features can only be used when you are signed in. Your AI key is tied to your account and stored encrypted, so it is never left sitting on a device without a login.</p><p>${blocked?'You are signed in, but your account is not fully set up yet. Finish that under Settings, Account.':'Everything else in Apex, including barcode scanning, search and quick add, works without signing in.'}</p><div class="stack">${blocked?'<button class="btn primary block" data-a="settings">Open Settings</button>':'<button class="btn primary block" data-a="login">Sign in or create an account</button>'}<button class="btn block" data-a="close">Not now</button></div>`,'ai-gate')}
-const gKey=()=>aiAllowed()?lsGet('.gk')||'':'';
-async function gStore(key){lsSet('.gk',key);lsDel('.gm');if(vaultKey){try{const iv=crypto.getRandomValues(new Uint8Array(12)),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},vaultKey,new TextEncoder().encode(key));S.settings.gk={iv:b64(iv),ct:b64(ct)};save('settings')}catch(e){}}}
-async function gRestore(){if(gKey()||!S.settings.gk||!vaultKey)return;try{lsSet('.gk',new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(S.settings.gk.iv)},vaultKey,unb64(S.settings.gk.ct))))}catch(e){}}
+/* The AI key is held in memory while the app runs and stored on the device encrypted with a key that the browser
+   keeps in its own key store and will not hand out (non-extractable), so the key is never sitting in storage as readable text. */
+let gMem='';
+const gKey=()=>aiAllowed()?gMem:'';
+function devKey(){return new Promise(res=>{try{const rq=indexedDB.open('apex-keys',1);rq.onupgradeneeded=()=>rq.result.createObjectStore('k');rq.onerror=()=>res(null);
+  rq.onsuccess=()=>{const db=rq.result,g=db.transaction('k').objectStore('k').get('dev');g.onerror=()=>res(null);
+    g.onsuccess=async()=>{if(g.result){res(g.result);return}try{const k=await crypto.subtle.generateKey({name:'AES-GCM',length:256},false,['encrypt','decrypt']),tx=db.transaction('k','readwrite');tx.objectStore('k').put(k,'dev');tx.oncomplete=()=>res(k);tx.onerror=()=>res(null)}catch(e){res(null)}}}}catch(e){res(null)}})}
+async function gSeal(key){gMem=key;try{const dk=await devKey();if(!dk){lsSet('.gk',key);return}const iv=crypto.getRandomValues(new Uint8Array(12)),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},dk,new TextEncoder().encode(key));lsSet('.gke',JSON.stringify({iv:b64(iv),ct:b64(ct)}));lsDel('.gk')}catch(e){lsSet('.gk',key)}}
+async function gLoad(){try{const plain=lsGet('.gk');if(plain){await gSeal(plain);return}const raw=lsGet('.gke');if(!raw)return;const o=JSON.parse(raw),dk=await devKey();if(!dk)return;gMem=new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(o.iv)},dk,unb64(o.ct)))}catch(e){}}
+function gForget(){gMem='';['.gk','.gke','.gm','.gml','.gslow'].forEach(lsDel)}
+async function gStore(key){await gSeal(key);lsDel('.gm');if(vaultKey){try{const iv=crypto.getRandomValues(new Uint8Array(12)),ct=await crypto.subtle.encrypt({name:'AES-GCM',iv},vaultKey,new TextEncoder().encode(key));S.settings.gk={iv:b64(iv),ct:b64(ct)};save('settings')}catch(e){}}}
+async function gRestore(){await gReady;if(gMem||!S.settings.gk||!vaultKey)return;try{await gSeal(new TextDecoder().decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(S.settings.gk.iv)},vaultKey,unb64(S.settings.gk.ct))))}catch(e){}}
+const gReady=gLoad();
 const GAPI='https://generativelanguage.googleapis.com/v1beta/';
 /* Model names change often, so ask the API which models this key can use and pick the newest general-purpose Flash model. */
 async function gModel(key,force){const c=!force&&lsGet('.gm');if(c)return c;const r=await fetch(GAPI+'models?pageSize=200',{headers:{'x-goog-api-key':key}});
@@ -329,5 +339,5 @@ function nutAction(a,v,b){switch(a){
   case 'ml-save':{const m=+$('#ml-m').value,on=mealItems.filter(i=>i.on&&i.g>0);if(!on.length){toast('Tick at least one item.');break}on.forEach(i=>addEntry(i,i.g,m));save(fdKey(foodDay));closeSheet();if(tab!=='food')go('food');else render();toast('Meal added.');break}
   case 'gem-guide':geminiGuide();break;
   case 'gem-save':geminiSave();break;
-  case 'gem-remove':lsDel('.gk');lsDel('.gm');if(S.settings.gk){delete S.settings.gk;save('settings')}closeSheet();toast('AI key removed from this device.');break;
+  case 'gem-remove':gForget();if(S.settings.gk){delete S.settings.gk;save('settings')}closeSheet();toast('AI key removed from this device.');break;
   }}
