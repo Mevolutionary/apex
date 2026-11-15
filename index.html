@@ -271,7 +271,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.39';
+const LB=2.20462, DAY=864e5, VERSION='0.40';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -438,7 +438,7 @@ const ICON={home:'<path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1
 /* Everything the app can open. kind: screen (a tab), tool (opens a sheet), soon (planned, shown as a placeholder). New features get added here and can then be pinned to the dock. */
 const ITEMS={home:{label:'Home',kind:'screen'},train:{label:'Train',kind:'screen'},history:{label:'History',kind:'screen'},ranks:{label:'Ranks',kind:'screen'},body:{label:'Body',kind:'screen'},
   plates:{label:'Plates',kind:'tool'},settings:{label:'Settings',kind:'tool'},
-  food:{label:'Nutrition',kind:'screen'},scan:{label:'Scan food',kind:'tool'},coach:{label:'Coach',kind:'screen'},studies:{label:'Studies',kind:'soon',note:'a later update'},share:{label:'Share card',kind:'soon',note:'a later update'}};
+  food:{label:'Nutrition',kind:'screen'},scan:{label:'Scan food',kind:'tool'},coach:{label:'Coach',kind:'screen'},studies:{label:'Studies',kind:'screen'}};
 const SCREENS=Object.keys(ITEMS).filter(k=>ITEMS[k].kind==='screen'),DEFAULT_DOCK=['home','train','history','ranks','body'];
 let dockEdit=false,navDragging=false;
 /* An invisible iOS switch laid over a control. A real finger tap on a switch is the one case where iOS still gives web pages a haptic tick. */
@@ -625,7 +625,7 @@ function compareSheet(){const ph=S.weights.filter(w=>w.p);if(ph.length<2)return;
   openSheet(`<h2>First and latest</h2><div class="row" style="align-items:flex-start">${fig(a)}${fig(b)}</div><p class="small" style="margin-top:12px">Change between them: ${(b.kg-a.kg>0?'+':'')+disp(b.kg-a.kg)} ${unit()}.</p>`,'photo');fillPhotos()}
 function saveWeigh(val,d,hasPhoto){const old=S.weights.find(w=>w.d===d),e={d,kg:Math.round(toKg(val)*100)/100};if(hasPhoto||(old&&old.p))e.p=1;S.weights=S.weights.filter(w=>w.d!==d);S.weights.push(e);S.weights.sort((a,b)=>a.d<b.d?-1:1);save('weights');render()}
 
-function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body,food,coach})[tab]());tick();if(tab==='body')fillPhotos()}
+function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body,food,coach,studies})[tab]());tick();if(tab==='body')fillPhotos()}
 function go(t){const ix=k=>SCREENS.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
   /* leave a copy of the old screen behind for a moment so it can fade and slide away while the new one arrives */
   try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),300)}}catch(e){}
@@ -946,7 +946,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
-  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);
+  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);
   }});
 document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
@@ -964,6 +964,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 <script src="nutrition.js"></script>
 <script src="coach.js"></script>
 <script src="summary.js"></script>
+<script src="studies.js"></script>
 <script>
 function vfix(){let g=0;try{const st=matchMedia('(display-mode:standalone)').matches||navigator.standalone,port=innerHeight>=innerWidth,full=port?Math.max(screen.height,screen.width):Math.min(screen.height,screen.width);g=full-innerHeight;if(!st||g<8||g>90)g=0}catch(e){}document.documentElement.style.setProperty('--vgap',g+'px');window.vgap=g}
 vfix();addEventListener('resize',vfix);addEventListener('orientationchange',()=>setTimeout(vfix,300));
