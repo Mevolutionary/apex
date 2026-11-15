@@ -299,7 +299,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.52';
+const LB=2.20462, DAY=864e5, VERSION='0.53';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -646,6 +646,7 @@ function body(){const l=V().weights,tr=trend(l),cur=l[l.length-1],tnow=tr[tr.len
     <div style="margin-top:14px">${chart(l)}</div>
     <div class="grid3" style="margin-top:12px"><div class="tile"><b style="font-size:18px">${ch(ago(7))}</b><span>7 days</span></div><div class="tile"><b style="font-size:18px">${ch(ago(30))}</b><span>30 days</span></div><div class="tile"><b style="font-size:18px">${l.length}</b><span>weigh-ins</span></div></div></section>
   <section class="glass card"><h2>Log a weigh-in</h2><div class="row" style="align-items:flex-end"><label class="f" style="flex:1">Weight (${unit()})<input type="number" inputmode="decimal" step="any" id="bw-val" placeholder="${cur?disp(cur.kg):'0'}"></label><label class="f" style="flex:1">Date<input type="date" id="bw-date" value="${ymd(Date.now())}" max="${ymd(Date.now())}"></label></div><div class="row" style="margin-top:12px"><label class="btn" style="flex:1;padding:0 10px" id="bw-photo-lbl">Save with photo<input type="file" id="bw-photo" accept="image/*" hidden></label><button class="btn primary" style="flex:1;padding:0 10px" data-a="add-weight">Save weigh-in</button></div></section>
+  ${typeof bodyExtras==='function'?bodyExtras(l,tr):''}
   ${photoCard(l)}
   ${isEmpty()||!l.length?'':`<section class="glass card"><h2>Entries</h2><div class="list">${l.slice().reverse().slice(0,30).map(w=>`<div class="row between"><span>${niceDate(w.d+'T12:00')}</span><div class="row"><span class="num" style="font-weight:700">${disp(w.kg)} ${unit()}</span>${w.p?`<button class="btn sm" data-a="photo" data-v="${w.d}">Photo</button>`:''}<button class="btn sm danger" data-a="del-weight" data-v="${w.d}" aria-label="Delete weigh-in from ${w.d}">Delete</button></div></div>`).join('')}</div></section>`}`}
 
@@ -675,7 +676,7 @@ function compareSheet(){const ph=S.weights.filter(w=>w.p);if(ph.length<2)return;
   openSheet(`<h2>First and latest</h2><div class="row" style="align-items:flex-start">${fig(a)}${fig(b)}</div><p class="small" style="margin-top:12px">Change between them: ${(b.kg-a.kg>0?'+':'')+disp(b.kg-a.kg)} ${unit()}.</p>`,'photo');fillPhotos()}
 function saveWeigh(val,d,hasPhoto){const old=S.weights.find(w=>w.d===d),e={d,kg:Math.round(toKg(val)*100)/100};if(hasPhoto||(old&&old.p))e.p=1;S.weights=S.weights.filter(w=>w.d!==d);S.weights.push(e);S.weights.sort((a,b)=>a.d<b.d?-1:1);save('weights');render()}
 
-function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body,food,coach,studies,board:typeof boardScreen==='function'?boardScreen:home})[tab]());tick();if(tab==='body')fillPhotos()}
+function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body,food,coach,studies,board:typeof boardScreen==='function'?boardScreen:home,progress:typeof progressScreen==='function'?progressScreen:home})[tab]());tick();if(tab==='body')fillPhotos()}
 function go(t){const ix=k=>SCREENS.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
   /* leave a copy of the old screen behind for a moment so it can fade and slide away while the new one arrives */
   try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),300)}}catch(e){}
@@ -1026,7 +1027,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
-  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
+  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof progressAction==='function')progressAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
   }});
 document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
@@ -1042,7 +1043,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 /* ================= boot ================= */
 </script>
 <script>/* the version in the address lets the service worker keep these files and serve them instantly; a new version asks for new addresses */
-['nutrition','meals','coach','summary','studies','board'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
+['nutrition','meals','coach','summary','studies','board','progress'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
 <script>
 function vfix(){let g=0;try{const st=matchMedia('(display-mode:standalone)').matches||navigator.standalone,port=innerHeight>=innerWidth,full=port?Math.max(screen.height,screen.width):Math.min(screen.height,screen.width);g=full-innerHeight;if(!st||g<8||g>90)g=0}catch(e){}document.documentElement.style.setProperty('--vgap',g+'px');window.vgap=g}
 vfix();addEventListener('resize',vfix);addEventListener('orientationchange',()=>setTimeout(vfix,300));
