@@ -123,7 +123,7 @@ input[type=password]{width:100%;height:46px;padding:0 14px;border-radius:14px;ba
 .btn:active{transform:scale(.97)}
 .btn.primary{background:linear-gradient(180deg,#fff,#dfe5f5);color:#0b0d18;border-color:#fff;box-shadow:0 8px 24px rgba(255,255,255,.18)}
 .btn.danger{color:var(--bad)}
-.btn.sm{min-height:36px;padding:0 14px;font-size:14px}
+.btn.sm{min-height:36px;padding:0 14px;font-size:14px;white-space:nowrap}
 .btn.block{width:100%}
 .iconbtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
 .seg{display:flex;padding:3px;border-radius:999px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1)}
@@ -264,7 +264,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.30';
+const LB=2.20462, DAY=864e5, VERSION='0.32';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -521,7 +521,7 @@ function train(){const a=S.active;if(!a){const last=S.workouts[S.workouts.length
 
 let histShown=25;
 function histDetail(w){return `<div class="list">${w.exercises.map(e=>{const pr=(w.prs||[]).some(p=>p.exId===e.exId);return `<div class="tap" data-a="ex" data-v="${esc(e.exId)}"><div class="row between"><span style="font-weight:600">${esc(exById(e.exId).name)}</span>${pr?'<span class="pr">PR</span>':''}</div><div class="small muted num">${e.sets.map(s=>disp(s.w||0)+' × '+s.r).join('   ·   ')}</div></div>`}).join('')}</div>
-  ${isEmpty()?'':`<div class="row" style="margin-top:14px"><button class="btn sm" data-a="summary" data-v="${w.id}">Summary and share</button><button class="btn sm" data-a="to-routine" data-v="${w.id}">Save as routine</button><button class="btn sm danger" data-a="del-workout" data-v="${w.id}">Delete</button></div>`}`}
+  ${isEmpty()?'':`<div class="row wrap" style="margin-top:14px;gap:8px"><button class="btn sm" style="padding:0 12px" data-a="summary" data-v="${w.id}">Summary</button><button class="btn sm" style="padding:0 12px" data-a="to-routine" data-v="${w.id}">Save routine</button><button class="btn sm danger" style="padding:0 12px" data-a="del-workout" data-v="${w.id}">Delete</button></div>`}`}
 function history(){const all=V().workouts.slice().reverse(),l=all.slice(0,histShown);
   return `<div class="top"><h1>History</h1><span class="sub">${all.length} workout${all.length===1?'':'s'}</span></div>${demoBanner()}
   ${l.length?l.map(w=>`<section class="glass card hist ${expanded===w.id?'open':''}"><button data-a="expand" data-v="${w.id}" style="width:100%;text-align:left" aria-expanded="${expanded===w.id}"><div class="row between"><h3 style="font-size:18px;font-weight:800">${esc(w.name)}</h3>${(w.prs||[]).length?`<span class="pr">${w.prs.length} PR${w.prs.length>1?'s':''}</span>`:''}</div>
