@@ -234,19 +234,22 @@ async function gModel(key,force){const c=!force&&lsGet('.gm');if(c)return c;cons
   const ver=n=>parseFloat((/gemini-(\d+(?:\.\d+)?)/.exec(n)||[])[1])||0,plain=all.filter(n=>/^gemini-[\d.]+-flash/.test(n)&&!/image|tts|audio|live|embed|exp|preview|thinking|native/.test(n));
   const pool=plain.length?plain:all.filter(n=>/flash/.test(n)),pick=pool.sort((a,b)=>ver(b)-ver(a)||(/lite/.test(a)?1:0)-(/lite/.test(b)?1:0)||a.length-b.length)[0];
   if(!pick)throw{code:'fail'};lsSet('.gm',pick);lsSet('.gml',JSON.stringify(pool.slice(0,4)));return pick}
-/* One place for every Gemini request: 25 s timeout, a retry when Google is overloaded (HTTP 500/503), then the next model down. */
-async function gCall(body){if(!aiAllowed())throw{code:'signin'};const key=gKey();if(!key)throw{code:'nokey'};
-  const post=async model=>{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),25000);
+/* One place for every Gemini request: thinking turned down for speed, 45 s timeout, a retry when Google is overloaded (HTTP 500/503), then the next model down. */
+async function gCall(body0){if(!aiAllowed())throw{code:'signin'};const key=gKey();if(!key)throw{code:'nokey'};
+  const post=async(model,body)=>{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),45000);
     try{return await fetch(GAPI+'models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal:ctl.signal})}
-    catch(e){throw{code:e&&e.name==='AbortError'?'timeout':'fail'}}finally{clearTimeout(t)}};
+    catch(e){throw{code:e&&e.name==='AbortError'?'timeout':'fail',model}}finally{clearTimeout(t)}};
+  /* newer models reason before answering, which is slow and not needed here: Gemini 3 takes thinkingLevel, 2.5 takes thinkingBudget */
+  const tuned=model=>{const b=JSON.parse(JSON.stringify(body0)),v=parseFloat((/gemini-(\d+(?:\.\d+)?)/.exec(model)||[])[1])||0;b.generationConfig=b.generationConfig||{};if(v>=3)b.generationConfig.thinkingConfig={thinkingLevel:'minimal'};else if(v>=2.5)b.generationConfig.thinkingConfig={thinkingBudget:0};return b};
   let models=[await gModel(key,false)],last={code:'fail'},refreshed=false;try{JSON.parse(lsGet('.gml')||'[]').forEach(m=>{if(!models.includes(m))models.push(m)})}catch(e){}
-  for(let mi=0;mi<Math.min(3,models.length);mi++){const model=models[mi];
-    for(let a=0;a<2;a++){let r;try{r=await post(model)}catch(e){last=e;break}
-      if(r.status===404){lsDel('.gm');if(!refreshed){refreshed=true;try{const m=await gModel(key,true);if(!models.includes(m))models.splice(mi+1,0,m)}catch(e){}}last={code:'fail',status:404};break}
-      if(r.status===400&&body.generationConfig&&body.generationConfig.responseMimeType){delete body.generationConfig.responseMimeType;a--;continue}
-      if(r.status===500||r.status===503){last={code:'busy',status:r.status};if(a===0){await new Promise(res=>setTimeout(res,1500));continue}break}
-      if(r.status===429)throw{code:'limit',status:429};if(r.status===401||r.status===403)throw{code:'badkey',status:r.status};if(!r.ok)throw{code:'fail',status:r.status};
-      const j=await r.json(),txt=(((j.candidates||[])[0]||{}).content||{parts:[]}).parts.map(p=>p.text||'').join(''),m=txt.match(/\{[\s\S]*\}/);if(!m)throw{code:'unreadable'};try{return JSON.parse(m[0])}catch(e){throw{code:'unreadable'}}}}
+  for(let mi=0;mi<Math.min(3,models.length);mi++){const model=models[mi],body=tuned(model);let busyTries=0;
+    for(let a=0;a<5;a++){let r;try{r=await post(model,body)}catch(e){last=e;break}
+      if(r.status===404){lsDel('.gm');if(!refreshed){refreshed=true;try{const m=await gModel(key,true);if(!models.includes(m))models.splice(mi+1,0,m)}catch(e){}}last={code:'fail',status:404,model};break}
+      if(r.status===400&&body.generationConfig.thinkingConfig){delete body.generationConfig.thinkingConfig;continue}
+      if(r.status===400&&body.generationConfig.responseMimeType){delete body.generationConfig.responseMimeType;continue}
+      if(r.status===500||r.status===503){last={code:'busy',status:r.status,model};if(busyTries++===0){await new Promise(res=>setTimeout(res,1500));continue}break}
+      if(r.status===429)throw{code:'limit',status:429,model};if(r.status===401||r.status===403)throw{code:'badkey',status:r.status};if(!r.ok)throw{code:'fail',status:r.status,model};
+      const j=await r.json(),txt=(((j.candidates||[])[0]||{}).content||{parts:[]}).parts.filter(p=>!p.thought).map(p=>p.text||'').join(''),m=txt.match(/\{[\s\S]*\}/);if(!m)throw{code:'unreadable'};try{return JSON.parse(m[0])}catch(e){throw{code:'unreadable'}}}}
   throw last}
 async function gAsk(prompt,dataUrl){return gCall({contents:[{parts:[{inline_data:{mime_type:'image/jpeg',data:dataUrl.split(',')[1]}},{text:prompt}]}],generationConfig:{temperature:.1,responseMimeType:'application/json'}})}
 const GERR={busy:'Google\'s AI is overloaded right now. That is on their side, not yours. Try again in a minute, or add the food another way.',timeout:'The AI took too long to answer. Try again in a moment.',limit:'The free AI allowance is used up for now. Try again later, or add the food another way.',badkey:'Google rejected the AI key. Check it under Settings, AI food scanning.',unreadable:'The AI could not read that photo. Try again with better light and the whole label in frame.',fail:'The AI scan did not work this time. Try again in a moment.'};
