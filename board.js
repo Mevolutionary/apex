@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.54',['Fix for the dark strip that could appear under the dock']],
   ['0.53',['New Progress screen: a map of the muscles you trained this week, awards and a monthly or yearly recap','Goal weight with a projected date on the Body screen','Body measurements: waist, chest, arm, thigh, hips']],
   ['0.52',['Leaderboard: a Lifts tab to rank one lift at a time, search by name and compare with a friend','Dock: drag items into any order while editing it']],
   ['0.51',['Saved meals: log a regular meal in one tap','Copy a whole day or one meal','Favourite foods with a star','Water tracking','Weekly nutrition report','Describe what you ate and let AI log it']],
