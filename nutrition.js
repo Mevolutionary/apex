@@ -234,16 +234,17 @@ async function gModel(key,force){const c=!force&&lsGet('.gm');if(c)return c;cons
   const ver=n=>parseFloat((/gemini-(\d+(?:\.\d+)?)/.exec(n)||[])[1])||0,plain=all.filter(n=>/^gemini-[\d.]+-flash/.test(n)&&!/image|tts|audio|live|embed|exp|preview|thinking|native/.test(n));
   const pool=plain.length?plain:all.filter(n=>/flash/.test(n)),pick=pool.sort((a,b)=>ver(b)-ver(a)||(/lite/.test(a)?1:0)-(/lite/.test(b)?1:0)||a.length-b.length)[0];
   if(!pick)throw{code:'fail'};lsSet('.gm',pick);lsSet('.gml',JSON.stringify(pool.slice(0,4)));return pick}
-/* One place for every Gemini request: thinking turned down for speed, 45 s timeout, a retry when Google is overloaded (HTTP 500/503), then the next model down. */
+/* One place for every Gemini request: thinking turned down for speed, 25 s timeout per model (a model that times out is skipped for six hours), a retry when Google is overloaded (HTTP 500/503), then the next model down. */
 async function gCall(body0){if(!aiAllowed())throw{code:'signin'};const key=gKey();if(!key)throw{code:'nokey'};
-  const post=async(model,body)=>{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),45000);
+  const post=async(model,body)=>{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),25000);
     try{return await fetch(GAPI+'models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body),signal:ctl.signal})}
     catch(e){throw{code:e&&e.name==='AbortError'?'timeout':'fail',model}}finally{clearTimeout(t)}};
   /* newer models reason before answering, which is slow and not needed here: Gemini 3 takes thinkingLevel, 2.5 takes thinkingBudget */
   const tuned=model=>{const b=JSON.parse(JSON.stringify(body0)),v=parseFloat((/gemini-(\d+(?:\.\d+)?)/.exec(model)||[])[1])||0;b.generationConfig=b.generationConfig||{};if(v>=3)b.generationConfig.thinkingConfig={thinkingLevel:'minimal'};else if(v>=2.5)b.generationConfig.thinkingConfig={thinkingBudget:0};return b};
-  let models=[await gModel(key,false)],last={code:'fail'},refreshed=false;try{JSON.parse(lsGet('.gml')||'[]').forEach(m=>{if(!models.includes(m))models.push(m)})}catch(e){}
+  let models=[],last={code:'fail'},refreshed=false;if(!lsGet('.gml')){lsDel('.gm');refreshed=true}models.push(await gModel(key,false));try{JSON.parse(lsGet('.gml')||'[]').forEach(m=>{if(!models.includes(m))models.push(m)})}catch(e){}
+  try{const sl=JSON.parse(lsGet('.gslow')||'{}');models.sort((a,b)=>((Date.now()-(sl[a]||0)<216e5)?1:0)-((Date.now()-(sl[b]||0)<216e5)?1:0))}catch(e){}
   for(let mi=0;mi<Math.min(3,models.length);mi++){const model=models[mi],body=tuned(model);let busyTries=0;
-    for(let a=0;a<5;a++){let r;try{r=await post(model,body)}catch(e){last=e;break}
+    for(let a=0;a<5;a++){let r;try{r=await post(model,body)}catch(e){last=e;if(e.code==='timeout'){try{const sl=JSON.parse(lsGet('.gslow')||'{}');sl[model]=Date.now();lsSet('.gslow',JSON.stringify(sl))}catch(x){}}break}
       if(r.status===404){lsDel('.gm');if(!refreshed){refreshed=true;try{const m=await gModel(key,true);if(!models.includes(m))models.splice(mi+1,0,m)}catch(e){}}last={code:'fail',status:404,model};break}
       if(r.status===400&&body.generationConfig.thinkingConfig){delete body.generationConfig.thinkingConfig;continue}
       if(r.status===400&&body.generationConfig.responseMimeType){delete body.generationConfig.responseMimeType;continue}
