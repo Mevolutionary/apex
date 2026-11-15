@@ -785,7 +785,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   la.addEventListener('touchstart',e=>{ld=L.open?{y:e.touches[0].clientY,h0:lHeight(L.full?2:1),top:$('#linner').scrollTop<=0,on:false,dy:0,t0:Date.now()}:null},{passive:true});
   la.addEventListener('touchmove',e=>{if(!ld)return;const dy=e.touches[0].clientY-ld.y;if(!ld.on){if(Math.abs(dy)<8)return;if(dy<0&&(L.full||L.HF-L.H<=24)){ld=null;return}if(dy>0&&!ld.top){ld=null;return}ld.on=true}
     e.preventDefault();ld.dy=dy;launcherSet(lFromH(ld.h0-dy),false)},{passive:false});
-  const endL=()=>{if(!ld)return;const d=ld;ld=null;if(!d.on)return;if(L.p<.72||d.dy>240||(d.dy>110&&d.dy/Math.max(1,Date.now()-d.t0)>1)){launcherClose();return}
+  const endL=()=>{if(!ld)return;const d=ld;ld=null;if(!d.on)return;if(L.p<.72||d.dy>240||(d.dy>110&&d.dy/Math.max(1,Date.now()-d.t0)>.6)){launcherClose();return}
     L.full=(L.full?d.dy<60:d.dy<-60)&&L.HF-L.H>24;haptic();launcherSet(L.full?2:1,true)};
   la.addEventListener('touchend',endL);la.addEventListener('touchcancel',endL);
   /* sheets: pull up for full screen, pull down to shrink or dismiss */
@@ -797,7 +797,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
     if(hh>=SH.hN){sh.style.height=Math.min(SH.hMax,hh)+'px';sh.style.transform=''}else{sh.style.height=SH.hN+'px';sh.style.transform='translateY('+(SH.hN-hh)+'px)'}},{passive:false});
   const endSheet=()=>{if(!sd)return;const d=sd;sd=null;if(!d.on)return;sh.classList.remove('dragging');const hh=d.h0-d.dy;
     /* one long or fast pull down closes the sheet outright, even from fully open */
-    const speed=d.dy/Math.max(1,Date.now()-d.t0);if(hh<SH.hN-90||d.dy>240||(d.dy>110&&speed>1)){haptic();dismissSheet();return}
+    const speed=d.dy/Math.max(1,Date.now()-d.t0);if(hh<SH.hN-90||d.dy>240||(d.dy>110&&speed>.6)){haptic();dismissSheet();return}
     SH.full=d.h0<SH.hMax?d.dy<-60:d.dy<60;if(!SH.canFull)SH.full=false;
     sh.style.transition='height .5s cubic-bezier(.22,1.02,.32,1),transform .4s cubic-bezier(.22,1.02,.32,1)';sh.style.transform='';const t=SH.full?SH.hMax:SH.hN;sh.style.height=t+'px';sh.dataset.h=t;sh.style.setProperty('--p',SH.full?'1':'0');haptic()};
   sh.addEventListener('touchend',endSheet);sh.addEventListener('touchcancel',endSheet)}
