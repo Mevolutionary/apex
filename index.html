@@ -216,8 +216,8 @@ div.ltile .hx{transform:translate(-50%,-50%) scale(2.6,3.6)}
 .lockbox{width:min(360px,100%);display:flex;flex-direction:column;gap:14px;text-align:center;align-items:stretch}
 .lockbox h2{font-size:26px;font-weight:900}.lockbox p{margin:0}
 #lock-pin{text-align:center;font-size:22px;letter-spacing:6px}
-#toast{position:fixed;z-index:70;top:calc(env(safe-area-inset-top) + 14px);left:50%;transform:translate(-50%,-80px);padding:10px 18px;border-radius:999px;font-size:14px;font-weight:600;transition:transform .3s;max-width:90%}
-#toast.on{transform:translate(-50%,0)}
+#toast{position:fixed;z-index:70;top:calc(env(safe-area-inset-top) + 14px);left:50%;transform:translate(-50%,calc(-100% - 80px));opacity:0;visibility:hidden;padding:10px 18px;border-radius:22px;font-size:14px;font-weight:600;transition:transform .3s,opacity .3s,visibility 0s .3s;max-width:90%}
+#toast.on{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .3s,opacity .3s,visibility 0s}
 .plates{display:flex;align-items:center;justify-content:center;gap:3px;height:120px;margin:6px 0}
 .plates .barr{width:46px;height:10px;background:#aeb6c6;border-radius:3px}
 .plates .p{width:16px;border-radius:5px;display:grid;place-items:center;font-size:9px;font-weight:800;color:#0b0d18;writing-mode:vertical-rl}
@@ -257,7 +257,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.21';
+const LB=2.20462, DAY=864e5, VERSION='0.22';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
