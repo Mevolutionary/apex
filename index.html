@@ -35,7 +35,7 @@
   --r:26px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-:root{--sab:min(env(safe-area-inset-bottom,0px),34px)}html,body{height:100%;margin:0}
+:root{--sab:min(env(safe-area-inset-bottom,0px),34px)}html,body{height:100%;margin:0}html{height:calc(100% + var(--vgap,0px))}body{position:relative}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 input,textarea{-webkit-user-select:text;user-select:text}
 button,input,select{font:inherit;color:inherit}
@@ -46,7 +46,7 @@ h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
 
 /* colour field */
 html{background:#060814}
-.field{position:fixed;left:0;top:0;width:100vw;height:100vh;height:100lvh;overflow:hidden;z-index:0;pointer-events:none;background:#060814}
+.field{position:absolute;left:0;top:0;width:100%;height:100%;overflow:hidden;z-index:0;pointer-events:none;background:#060814}
 .field i{position:absolute;inset:-30%;will-change:transform}
 .field i:nth-child(1){background:radial-gradient(42% 36% at 28% 24%,rgba(92,74,255,.8),transparent 72%),radial-gradient(40% 36% at 78% 72%,rgba(0,160,215,.55),transparent 72%);animation:driftA 19s ease-in-out infinite alternate}
 .field i:nth-child(2){background:radial-gradient(34% 30% at 76% 24%,rgba(255,112,92,.38),transparent 72%),radial-gradient(44% 38% at 18% 82%,rgba(150,84,255,.5),transparent 72%);animation:driftB 25s ease-in-out infinite alternate}
@@ -157,7 +157,7 @@ nav .grab{position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:
 nav .grab::after{content:'';position:absolute;left:50%;top:8px;width:36px;height:4px;margin-left:-18px;border-radius:9px;background:rgba(255,255,255,.38)}
 nav .grab:active{transform:translateX(-50%)}
 .lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0 0}
-#lscrim{position:fixed;inset:0;z-index:7;display:none;opacity:0;background:rgba(3,4,10,.5)}
+#lscrim{position:absolute;inset:0;z-index:7;display:none;opacity:0;background:rgba(3,4,10,.5)}
 #launch{position:absolute;z-index:8;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 14px);width:min(508px,calc(100% - 32px));display:none;overflow:hidden;touch-action:none;
   -webkit-backdrop-filter:blur(36px) saturate(190%);backdrop-filter:blur(36px) saturate(190%);background:linear-gradient(170deg,rgba(255,255,255,.2),rgba(120,130,190,.14) 40%,rgba(20,24,48,.5))}
 #linner{padding:10px 18px 20px;overflow-y:auto;transform-origin:50% 100%;box-sizing:border-box}
@@ -212,7 +212,7 @@ div.ltile .hx{transform:translate(-50%,-50%) scale(2.6,3.6)}
 .rankrow{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center}
 
 /* sheet */
-#scrim{position:fixed;inset:0;z-index:10;background:rgba(3,4,10,.55);display:none;align-items:flex-end;justify-content:center;box-sizing:border-box;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(var(--sab) + 14px)}
+#scrim{position:absolute;inset:0;z-index:10;background:rgba(3,4,10,.55);display:none;align-items:flex-end;justify-content:center;box-sizing:border-box;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(var(--sab) + 14px)}
 #scrim.on{display:flex}
 #sheet{width:min(508px,100%);box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;padding:10px 18px 22px;border-radius:36px;-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);background:linear-gradient(180deg,rgba(40,44,70,.82),rgba(18,20,36,.9))}
 #sheet{position:relative;z-index:2}
@@ -225,7 +225,7 @@ div.ltile .hx{transform:translate(-50%,-50%) scale(2.6,3.6)}
 #sheet p{color:var(--ink-2);margin:0 0 10px;max-width:65ch}
 .stack{display:flex;flex-direction:column;gap:12px}
 @keyframes rise{from{transform:translateY(70px) scale(.96);opacity:0}}
-#lock{position:fixed;inset:0;z-index:60;display:none;place-items:center;padding:24px;background:radial-gradient(60% 45% at 30% 20%,rgba(92,74,255,.55),transparent 70%),radial-gradient(55% 45% at 80% 85%,rgba(0,160,215,.4),transparent 70%),#060814}
+#lock{position:absolute;inset:0;z-index:60;display:none;place-items:center;padding:24px;background:radial-gradient(60% 45% at 30% 20%,rgba(92,74,255,.55),transparent 70%),radial-gradient(55% 45% at 80% 85%,rgba(0,160,215,.4),transparent 70%),#060814}
 #lock.on{display:grid}
 .lockbox{width:min(360px,100%);display:flex;flex-direction:column;gap:14px;text-align:center;align-items:stretch}
 .lockbox h2{font-size:26px;font-weight:900}.lockbox p{margin:0}
@@ -271,7 +271,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.34';
+const LB=2.20462, DAY=864e5, VERSION='0.35';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -695,7 +695,8 @@ function settingsSheet(){
     general:`<div class="row between"><span>Weight units</span>${seg('unit',[['kg','kg'],['lb','lb']])}</div>
       <div class="row between"><span>Rank standards</span>${seg('sex',[['male','Male'],['female','Female']])}</div>
       <div><div style="margin-bottom:8px">Rest timer between sets</div>${seg('rest',[[0,'Off'],[60,'60s'],[90,'90s'],[120,'120s'],[180,'180s']]).replace('class="seg"','class="seg" style="justify-content:space-between"')}</div>
-      <div class="tile small row between"><span>Apex ${VERSION}</span><button class="btn sm" data-a="check-update">Check for updates</button></div>`,
+      <div class="tile small row between"><span>Apex ${VERSION}</span><button class="btn sm" data-a="check-update">Check for updates</button></div>
+      <p class="small muted" style="margin:0;font-size:11px">Screen ${innerWidth}×${innerHeight} of ${screen.width}×${screen.height} · fill ${window.vgap||0} · app ${(matchMedia('(display-mode:standalone)').matches||navigator.standalone)?'yes':'no'}</p>`,
     food:typeof nutSettingsRow==='function'?nutSettingsRow():'',
     account:sync+acct+(fbUser?'<button class="btn block danger" data-a="delete-sheet">Delete my account</button>':''),
     security:`<div class="row between"><span>App lock</span><button class="btn sm" data-a="pin">${pinGet()?'On · change':'Set a PIN'}</button></div><div class="tile small">The app lock asks for a PIN when Apex opens and after a minute in the background. It protects this device only.</div>${vault}`,
@@ -931,6 +932,8 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 <script src="coach.js"></script>
 <script src="summary.js"></script>
 <script>
+function vfix(){let g=0;try{const st=matchMedia('(display-mode:standalone)').matches||navigator.standalone,port=innerHeight>=innerWidth,full=port?Math.max(screen.height,screen.width):Math.min(screen.height,screen.width);g=full-innerHeight;if(!st||g<8||g>90)g=0}catch(e){}document.documentElement.style.setProperty('--vgap',g+'px');window.vgap=g}
+vfix();addEventListener('resize',vfix);addEventListener('orientationchange',()=>setTimeout(vfix,300));
 localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();if(pinGet())lockShow();initCloud();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(location.protocol==='https:')setTimeout(()=>checkUpdate(false),2500);
