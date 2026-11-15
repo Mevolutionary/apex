@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.57',['A welcome guide for new people: Home Screen steps for your phone, a quick tour, and how to create an account. Replay it from Settings, About']],
   ['0.56',['Choose your own Home Screen icon and colour','Unlock with Face ID or fingerprint','Calendar reminders for weigh-ins, workouts and food','Warm-up calculator, move exercises up or down, and time estimates','Technique cues and a demo link on each exercise']],
   ['0.55',['Ask: questions about your own training, weight and food, answered by AI','Coach: an AI explanation of your week (the plan itself stays rule-based)','Saved studies now follow your account between devices','Backups can include progress photos, and Settings shows when you last made one']],
   ['0.54',['Fix for the dark strip that could appear under the dock']],
@@ -53,7 +54,7 @@ const NOTES=[
 function notesSheet(sinceVer){const cmp=(a,b)=>a.split('.').map(Number).reduce((r,n,i)=>r||n-(+b.split('.')[i]||0),0),list=sinceVer?NOTES.filter(n=>cmp(n[0],sinceVer)>0):NOTES;if(!list.length)return false;
   openSheet(`<h2>${sinceVer?'What is new':'Patch notes'}</h2><div class="stack">${list.map(n=>`<div class="tile small"><strong>Version ${n[0]}</strong><ul style="margin:6px 0 0;padding-left:18px">${n[1].map(x=>`<li style="margin:3px 0">${x}</li>`).join('')}</ul></div>`).join('')}</div>`,'notes');return true}
 function notesBoot(){const seen=lsGet('.seen')||(isEmpty()?null:'0.49');lsSet('.seen',VERSION);if(!seen||seen===VERSION)return;
-  setTimeout(()=>{if($('#lock').classList.contains('on')||$('#scrim').classList.contains('on')||S.active)return;notesSheet(seen)},1400)}
+  setTimeout(()=>{const wl=document.getElementById('welcome');if($('#lock').classList.contains('on')||$('#scrim').classList.contains('on')||S.active||(wl&&wl.classList.contains('on')))return;notesSheet(seen)},1400)}
 
 /* ---------- leaderboard ---------- */
 let boardList=null,boardState='idle',boardErr='',boardView='rank',boardAt=0,boardLift='bench',boardQ='';
