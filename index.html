@@ -271,7 +271,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.37';
+const LB=2.20462, DAY=864e5, VERSION='0.38';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -675,7 +675,7 @@ function openSheet(html,kind){runCleanup();if(pushMode){pushMode=false;const sc0
 function closeSheet(){runCleanup();const sc=$('#scrim');confirmCb=null;clearStack();if(!sc.classList.contains('on')||sc.classList.contains('closing'))return;sc.classList.add('closing');clearTimeout(SH.timer);SH.timer=setTimeout(()=>{sc.classList.remove('on','closing');SH.full=false;const s2=$('#sheet');s2.dataset.h='';s2.style.animation='';s2.style.opacity=''},290)}
 function confirmSheet(title,msg,label,cb){confirmCb=cb;openSheet(`<h2>${title}</h2><p>${msg}</p><div class="row"><button class="btn" style="flex:1" data-a="close">Keep</button><button class="btn danger" style="flex:1" data-a="confirm">${label}</button></div>`)}
 const isApp=()=>{try{return matchMedia('(display-mode:standalone)').matches||!!navigator.standalone}catch(e){return false}};
-const WATCH_SC='Apex Workout',watchOn=()=>{try{return localStorage.getItem('apex.watch')==='1'}catch(e){return false}};
+const WATCH_SC='Apex Workout',WATCH_BACK='webapp://mevolutionary.github.io/apex/',watchOn=()=>{try{return localStorage.getItem('apex.watch')==='1'}catch(e){return false}};
 function watchFire(){try{location.href='shortcuts://run-shortcut?name='+encodeURIComponent(WATCH_SC)}catch(e){}}
 function watchGuide(replace){const st=(n,t,d,shot)=>`<div class="step"><b>${n}</b><div><div style="font-weight:700">${t}</div><div class="small muted">${d}</div>${shot||''}</div></div>`,on=watchOn();
   const html=`<h2>Start workouts on Apple Watch</h2><p>When you start a workout in Apex, your watch starts a strength workout too, so heart rate and calories are recorded in Apple Health. It runs through a shortcut you make once in Apple's Shortcuts app.</p><div class="stack">
@@ -683,7 +683,8 @@ function watchGuide(replace){const st=(n,t,d,shot)=>`<div class="step"><b>${n}</
   ${st(2,'Add the "Start Workout" action','Type Start Workout into the search box and tap it.','<div class="shot"><span class="fakebtn">Start Workout</span></div>')}
   ${st(3,'Pick the workout type','Tap the blue workout name and choose Traditional Strength Training. Leave the goal as Open.','')}
   ${st(4,'Name it exactly "'+WATCH_SC+'"','Tap the name at the top, choose Rename, type it with the same capitals and space, then tap Done.','<div class="shot"><div class="bar">'+WATCH_SC+'</div></div>')}
-  ${st(5,'Come back here and tap Test','Your watch should start a workout within a few seconds. The phone switches to Shortcuts for a moment, so switch back to Apex afterwards. End the test workout on your watch.','')}
+  ${st(5,'Add an "Open URLs" action underneath','This sends you straight back to Apex after the watch starts. Search for Open URLs, add it below Start Workout, and paste this address into it. It needs a recent iPhone software version and Apex on your Home Screen.','<div class="shot"><div class="key"><span style="overflow-wrap:anywhere">'+WATCH_BACK+'</span></div></div><button class="btn sm" style="margin-top:8px" data-a="watch-copy">Copy address</button>')}
+  ${st(6,'Come back here and tap Test','Your watch should start a workout within a few seconds. The phone switches to Shortcuts for a moment and then returns to Apex. End the test workout on your watch.','')}
   </div><div class="row" style="margin-top:16px"><button class="btn" style="flex:1" data-a="watch-test">Test</button><button class="btn" style="flex:1" data-a="watch-toggle">${on?'Turn off':'Turn on'}</button></div>
   <p class="small muted" style="margin-top:12px">${on?'On for this phone. ':''}Apex cannot end the watch workout, so end it on your watch when you finish. This setting stays on this phone only.</p>`;
   if(replace)openSheet(html,'guide');else pushSheet(html,'guide')}
@@ -880,6 +881,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'install-guide':installGuide();break;
   case 'watch-guide':watchGuide();break;
   case 'watch-test':watchFire();break;
+  case 'watch-copy':navigator.clipboard.writeText(WATCH_BACK).then(()=>toast('Address copied. Paste it into Open URLs.')).catch(()=>toast('Could not copy. Type it in by hand.'));break;
   case 'watch-toggle':try{localStorage.setItem('apex.watch',watchOn()?'0':'1')}catch(e){}toast(watchOn()?'Apple Watch start is on.':'Apple Watch start is off.');closeSheet();break;
   case 'app-copy':navigator.clipboard.writeText(APP_URL).then(()=>toast('Link copied.')).catch(()=>toast('Could not copy. The link is '+APP_URL));break;
   case 'app-share':if(navigator.share)navigator.share({title:'Apex',url:APP_URL}).catch(()=>{});else navigator.clipboard.writeText(APP_URL).then(()=>toast('Link copied.')).catch(()=>toast('The link is '+APP_URL));break;
