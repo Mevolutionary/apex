@@ -35,7 +35,7 @@
   --r:26px;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{height:100%;margin:0}
+:root{--sab:min(env(safe-area-inset-bottom,0px),34px)}html,body{height:100%;margin:0}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.4;overflow:hidden;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 input,textarea{-webkit-user-select:text;user-select:text}
 button,input,select{font:inherit;color:inherit}
@@ -83,7 +83,7 @@ main.enter .track i{animation:grow 1.15s .3s cubic-bezier(.16,1,.3,1) both;trans
 
 /* shell */
 #app{position:relative;z-index:1;height:100%;max-width:540px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden}
-main{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 26px) 18px calc(env(safe-area-inset-bottom) + 132px);display:flex;flex-direction:column;gap:16px}
+main{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 26px) 18px calc(var(--sab) + 132px);display:flex;flex-direction:column;gap:16px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 6px 4px}
 .top h1{font-size:32px;font-weight:900;letter-spacing:-.4px;line-height:1.1}
 .top .sub{color:var(--ink-2);font-size:14px;margin-bottom:2px}
@@ -147,7 +147,7 @@ input::-webkit-date-and-time-value{margin:0;min-height:0}
 input::-webkit-date-and-time-value{text-align:left}
 
 /* tab bar */
-#nav{position:fixed;z-index:5;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 14px);width:min(508px,calc(100% - 32px));display:flex;padding:6px;border-radius:999px}
+#nav{position:absolute;z-index:5;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 14px);width:min(508px,calc(100% - 32px));display:flex;padding:6px;border-radius:999px}
 nav .di{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;padding:8px 0 6px;border-radius:999px;font-size:11px;font-weight:600;color:var(--ink-2)}
 nav .di svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 nav .di{cursor:pointer;position:relative;z-index:1;transition:color .25s,transform .12s}nav .di:active{transform:scale(.92)}
@@ -158,7 +158,7 @@ nav .grab::after{content:'';position:absolute;left:50%;top:8px;width:36px;height
 nav .grab:active{transform:translateX(-50%)}
 .lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0 0}
 #lscrim{position:fixed;inset:0;z-index:7;display:none;opacity:0;background:rgba(3,4,10,.5)}
-#launch{position:fixed;z-index:8;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 14px);width:min(508px,calc(100% - 32px));display:none;overflow:hidden;touch-action:none;
+#launch{position:absolute;z-index:8;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 14px);width:min(508px,calc(100% - 32px));display:none;overflow:hidden;touch-action:none;
   -webkit-backdrop-filter:blur(36px) saturate(190%);backdrop-filter:blur(36px) saturate(190%);background:linear-gradient(170deg,rgba(255,255,255,.2),rgba(120,130,190,.14) 40%,rgba(20,24,48,.5))}
 #linner{padding:10px 18px 20px;overflow-y:auto;transform-origin:50% 100%;box-sizing:border-box}
 #linner h2{font-size:22px;font-weight:900}
@@ -173,7 +173,7 @@ nav .grab:active{transform:translateX(-50%)}
 .ltile.pinned{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.5)}.ltile.pinned em{color:var(--good)}
 
 /* rest pill */
-#rest{position:fixed;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 86px);width:min(508px,calc(100% - 32px));padding:10px 12px 10px 18px;border-radius:999px;display:none;align-items:center;gap:10px;overflow:hidden}
+#rest{position:absolute;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 86px);width:min(508px,calc(100% - 32px));padding:10px 12px 10px 18px;border-radius:999px;display:none;align-items:center;gap:10px;overflow:hidden}
 #rest.on{display:flex}
 #rest .bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(123,108,255,.45),rgba(255,122,89,.45));z-index:-1;transition:width 1s linear}
 #rest .t{font-family:var(--display);font-weight:900;font-size:22px;font-variant-numeric:tabular-nums;min-width:64px}
@@ -212,7 +212,7 @@ div.ltile .hx{transform:translate(-50%,-50%) scale(2.6,3.6)}
 .rankrow{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center}
 
 /* sheet */
-#scrim{position:fixed;inset:0;z-index:10;background:rgba(3,4,10,.55);display:none;align-items:flex-end;justify-content:center;box-sizing:border-box;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 14px)}
+#scrim{position:fixed;inset:0;z-index:10;background:rgba(3,4,10,.55);display:none;align-items:flex-end;justify-content:center;box-sizing:border-box;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(var(--sab) + 14px)}
 #scrim.on{display:flex}
 #sheet{width:min(508px,100%);box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;padding:10px 18px 22px;border-radius:36px;-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);background:linear-gradient(180deg,rgba(40,44,70,.82),rgba(18,20,36,.9))}
 #sheet{position:relative;z-index:2}
@@ -271,7 +271,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.33';
+const LB=2.20462, DAY=864e5, VERSION='0.34';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
