@@ -84,6 +84,18 @@ main.enter .track i{animation:grow 1.15s .3s cubic-bezier(.16,1,.3,1) both;trans
 #scrim.closing #sheet{transform:translateY(90px) scale(.9)!important;opacity:0;transition:transform .28s cubic-bezier(.4,0,1,1),opacity .24s!important}
 @media (prefers-reduced-motion:reduce){.ghost,.field i,main.enter>*,main.enter .track i,.check.pop,#scrim.on,#sheet{animation:none!important}*{transition:none!important}}
 
+/* display and accessibility switches (Settings, General). Stored per device. */
+html{-webkit-text-size-adjust:var(--tsa,100%);text-size-adjust:var(--tsa,100%)}
+html.calm .ghost,html.calm .field i,html.calm main.enter>*,html.calm main.enter .track i,html.calm main.enter .ring circle+circle,html.calm main.enter .emblem,html.calm .check.pop,html.calm #scrim.on,html.calm #sheet{animation:none!important}html.calm *{transition:none!important}
+html.lite .field i{animation:none!important}
+html.lite #nav,html.lite #rest,html.lite #toast,html.lite #sheet,html.lite #launch{-webkit-backdrop-filter:none!important;backdrop-filter:none!important;background:#171b30!important}
+html.hc{--ink-2:rgba(245,247,252,.9);--ink-3:rgba(245,247,252,.78);--edge:rgba(255,255,255,.55)}
+html.hc .field i{opacity:.35}
+html.hc .card,html.hc .tile{background:#141829!important;border:1px solid rgba(255,255,255,.5)!important}
+html.hc #nav,html.hc #sheet,html.hc #launch,html.hc #rest,html.hc #toast{background:#10142a!important;border:1px solid rgba(255,255,255,.6)!important}
+html.hc .info{color:var(--ink)}
+html.nohap .hx{display:none!important}
+
 /* shell */
 #app{position:relative;z-index:1;height:100%;max-width:540px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden}
 main{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 26px) 18px calc(var(--sab) + 132px);display:flex;flex-direction:column;gap:16px}
@@ -274,7 +286,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.46';
+const LB=2.20462, DAY=864e5, VERSION='0.47';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -660,7 +672,7 @@ function dismissSheet(){runCleanup();if(!sheetStack.length){closeSheet();return}
 function runCleanup(){if(window.sheetCleanup){const f=window.sheetCleanup;window.sheetCleanup=null;try{f()}catch(e){}}}
 /* Sheet entrances. If something was just tapped, the sheet grows out of that element's position and size and its contents settle in a beat later.
    Otherwise it springs up from below. When a sheet replaces another that is already open, only the contents animate and the height morphs. */
-let lastTap=null;const tapOrigin=()=>lastTap&&Date.now()-lastTap.t<600?lastTap.r:null,calm=()=>{try{return matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}};
+let lastTap=null;const tapOrigin=()=>lastTap&&Date.now()-lastTap.t<600?lastTap.r:null,calm=()=>{try{return document.documentElement.classList.contains('calm')||matchMedia('(prefers-reduced-motion: reduce)').matches}catch(e){return false}};
 function contentIntro(sh,delay){if(calm()||!sh.animate)return;[...sh.children].forEach((c,i)=>{if(c.classList.contains('grab'))return;c.animate([{opacity:0,transform:'translateY(26px) scale(.97)'},{opacity:1,transform:'none'}],{duration:520,delay:(delay||0)+i*45,easing:'cubic-bezier(.2,1.2,.3,1)',fill:'backwards'})})}
 function sheetIntro(from){const sh=$('#sheet');if(calm()||!sh.animate)return;const r=sh.getBoundingClientRect();
   if(from&&from.width>0&&r.width>0){const sx=Math.max(.06,from.width/r.width),sy=Math.max(.04,from.height/r.height);
@@ -677,6 +689,9 @@ function openSheet(html,kind){runCleanup();if(pushMode){pushMode=false;const sc0
   if(!same){if(wasOpen){contentIntro(sh,60);countUp(sh)}else sheetIntro(tapOrigin())}}
 function closeSheet(){runCleanup();const sc=$('#scrim');confirmCb=null;clearStack();if(!sc.classList.contains('on')||sc.classList.contains('closing'))return;sc.classList.add('closing');clearTimeout(SH.timer);SH.timer=setTimeout(()=>{sc.classList.remove('on','closing');SH.full=false;const s2=$('#sheet');s2.dataset.h='';s2.style.animation='';s2.style.opacity=''},290)}
 function confirmSheet(title,msg,label,cb){confirmCb=cb;openSheet(`<h2>${title}</h2><p>${msg}</p><div class="row"><button class="btn" style="flex:1" data-a="close">Keep</button><button class="btn danger" style="flex:1" data-a="confirm">${label}</button></div>`)}
+const uiGet=()=>{try{return Object.assign({text:'100',calm:false,lite:false,hc:false,hap:true},JSON.parse(localStorage.getItem('apex.ui')||'{}'))}catch(e){return{text:'100',calm:false,lite:false,hc:false,hap:true}}};
+function uiApply(){const u=uiGet(),c=document.documentElement.classList;c.toggle('calm',!!u.calm);c.toggle('lite',!!u.lite);c.toggle('hc',!!u.hc);c.toggle('nohap',u.hap===false);document.documentElement.style.setProperty('--tsa',(['100','112','125'].includes(String(u.text))?u.text:'100')+'%')}
+function uiSet(k,v){const u=uiGet();u[k]=v;try{localStorage.setItem('apex.ui',JSON.stringify(u))}catch(e){}uiApply()}
 const isApp=()=>{try{return matchMedia('(display-mode:standalone)').matches||!!navigator.standalone}catch(e){return false}};
 const WATCH_SC='Apex Workout',WATCH_LINK='https://www.icloud.com/shortcuts/ff2243c70368471eb9e24bd36d82d43b',watchOn=()=>{try{return localStorage.getItem('apex.watch')==='1'}catch(e){return false}};
 function watchFire(){try{location.href='shortcuts://run-shortcut?name='+encodeURIComponent(WATCH_SC)}catch(e){}}
@@ -723,6 +738,14 @@ function settingsSheet(){
     general:`<div class="row between"><span>Weight units</span>${seg('unit',[['kg','kg'],['lb','lb']])}</div>
       <div class="row between"><span>Rank standards</span>${seg('sex',[['male','Male'],['female','Female']])}</div>
       <div><div style="margin-bottom:8px">Rest timer between sets</div>${seg('rest',[[0,'Off'],[60,'60s'],[90,'90s'],[120,'120s'],[180,'180s']]).replace('class="seg"','class="seg" style="justify-content:space-between"')}</div>
+      ${(()=>{const u=uiGet(),sw=(k,on,label,sub)=>`<div class="row between" style="gap:12px"><span>${label}<br><span class="small muted">${sub}</span></span><div class="seg" style="flex:none"><button data-a="ui" data-k="${k}" data-v="0" class="${on?'':'on'}">Off</button><button data-a="ui" data-k="${k}" data-v="1" class="${on?'on':''}">On</button></div></div>`;
+        return `<div style="font-weight:800;margin-top:6px">Display and accessibility</div>
+      <div class="row between"><span>Text size</span><div class="seg">${[['100','Standard'],['112','Large'],['125','Larger']].map(o=>`<button data-a="ui" data-k="text" data-v="${o[0]}" class="${String(u.text)===o[0]?'on':''}">${o[1]}</button>`).join('')}</div></div>
+      ${sw('calm',u.calm,'Reduce motion','Turns off slides, bounces and count-ups')}
+      ${sw('lite',u.lite,'Lite effects','No blur or moving background. Smoother on older phones and easier on the battery')}
+      ${sw('hc',u.hc,'High contrast','Solid panels, brighter text and stronger outlines')}
+      ${sw('hap',u.hap!==false,'Haptics','Taps and ticks you can feel')}
+      <div class="small muted">These five apply to this device only.</div>`})()}
       <div class="tile small row between"><span>Start workouts on Apple Watch<br><span class="muted">${watchOn()?'On for this phone':'Off'}</span></span><button class="btn sm" data-a="watch-guide">${watchOn()?'Options':'Set up'}</button></div>
       <div class="tile small row between"><span>${isApp()?'On your Home Screen':'Add Apex to your Home Screen'}</span><button class="btn sm" data-a="install-guide">${isApp()?'Share':'Show me how'}</button></div>
       <div class="tile small row between"><span>Apex ${VERSION}</span><button class="btn sm" data-a="check-update">Check for updates</button></div>
@@ -882,6 +905,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'launcher':launcherOpen();break;
   case 'check-update':checkUpdate(true);break;
   case 'install-guide':installGuide();break;
+  case 'ui':{const k=b.dataset.k;uiSet(k,k==='text'?v:v==='1');settingsSheet();break}
   case 'watch-guide':watchGuide();break;
   case 'watch-test':watchFire();break;
   case 'watch-toggle':try{localStorage.setItem('apex.watch',watchOn()?'0':'1')}catch(e){}toast(watchOn()?'Apple Watch start is on.':'Apple Watch start is off.');closeSheet();break;
@@ -971,7 +995,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 <script>
 function vfix(){let g=0;try{const st=matchMedia('(display-mode:standalone)').matches||navigator.standalone,port=innerHeight>=innerWidth,full=port?Math.max(screen.height,screen.width):Math.min(screen.height,screen.width);g=full-innerHeight;if(!st||g<8||g>90)g=0}catch(e){}document.documentElement.style.setProperty('--vgap',g+'px');window.vgap=g}
 vfix();addEventListener('resize',vfix);addEventListener('orientationchange',()=>setTimeout(vfix,300));
-localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();if(pinGet())lockShow();initCloud();
+uiApply();localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();if(pinGet())lockShow();initCloud();
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(location.protocol==='https:')setTimeout(()=>checkUpdate(false),2500);
 </script>
