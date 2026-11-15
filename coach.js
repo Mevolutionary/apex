@@ -75,6 +75,7 @@ function coach(){const c=coachCfg(),{sets,weeks,n}=muscleSets(),{t,pri,lag}=coac
   const under=CMUS.filter(m=>(sets[m]||0)<t[m]*.7).sort((a,b)=>(t[b]-(sets[b]||0))-(t[a]-(sets[a]||0)));
   return `<div class="top"><h1>Coach</h1><button class="btn sm" data-a="coach-edit">Goal and schedule</button></div>
   ${deloadHint()}
+  ${typeof coachAiBtn==='function'?coachAiBtn():''}
   <section class="glass card"><div class="row between"><div><div class="small muted">Your goal</div><div style="font-weight:800;font-size:18px">${FOCUS[c.focus][0]}</div><div class="small muted">${c.days} days a week · about ${c.mins} minutes a session</div></div></div></section>
   <section class="glass card"><h2>Weekly sets per muscle<button class="info" data-a="coach-evidence">The evidence</button></h2>
     ${n?`<div class="bars">${rows}</div><div class="small muted" style="margin-top:12px">Your average over the last ${weeks<1.5?'week':Math.round(weeks)+' weeks'} against the target for your goal. The white line is the target${pri.size?', and ★ marks the muscles your goal puts first':''}. Sets for other muscles in the same lift count as half.</div>

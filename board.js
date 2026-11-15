@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.55',['Ask: questions about your own training, weight and food, answered by AI','Coach: an AI explanation of your week (the plan itself stays rule-based)','Saved studies now follow your account between devices','Backups can include progress photos, and Settings shows when you last made one']],
   ['0.54',['Fix for the dark strip that could appear under the dock']],
   ['0.53',['New Progress screen: a map of the muscles you trained this week, awards and a monthly or yearly recap','Goal weight with a projected date on the Body screen','Body measurements: waist, chest, arm, thigh, hips']],
   ['0.52',['Leaderboard: a Lifts tab to rank one lift at a time, search by name and compare with a friend','Dock: drag items into any order while editing it']],
