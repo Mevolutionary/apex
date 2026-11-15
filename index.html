@@ -181,6 +181,10 @@ nav .grab:active{transform:translateX(-50%)}
 #linner{position:relative;padding:10px 18px 20px;overflow-y:auto;transform-origin:50% 100%;box-sizing:border-box}
 html #nav.lghost{z-index:9;pointer-events:none;background:transparent!important;border-color:transparent!important;box-shadow:none!important;-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
 #linner h2{font-size:22px;font-weight:900}
+#dockrow{display:grid;grid-template-columns:repeat(var(--n),1fr);gap:8px;margin-top:14px;padding:8px;border-radius:22px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.14);touch-action:none;user-select:none;-webkit-user-select:none}
+.dslot{display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 2px 8px;border-radius:16px;background:rgba(255,255,255,.1);font-size:11px;font-weight:700;transition:transform .22s cubic-bezier(.2,.9,.2,1);cursor:grab}
+.dslot svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}.dslot span{pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.dslot.drag{transition:none;background:rgba(255,255,255,.26);z-index:2;position:relative;box-shadow:0 10px 24px rgba(0,0,0,.4)}
 #linner p{margin:8px 0 0}
 #linner .grabline{width:40px;height:5px;border-radius:9px;background:rgba(255,255,255,.32);margin:0 auto 14px}
 .ltile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px 14px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:600;transition:transform .15s,background .3s,border-color .3s}
@@ -295,7 +299,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.51';
+const LB=2.20462, DAY=864e5, VERSION='0.52';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -477,13 +481,23 @@ function renderNav(){const d=dock(),nav=$('#nav');if(nav.dataset.sig!==d.join())
 function openItem(id){const it=ITEMS[id];if(!it)return;if(it.kind==='soon'){toast(it.label+' arrives in '+it.note+'.');return}launcherClose();if(it.kind==='screen'){closeSheet();go(id)}else if(id==='plates')platesSheet();else if(id==='scan'){closeSheet();if(tab!=='food')go('food');nutAction('fd-scan')}else if(id==='settings')settingsSheet()}
 /* The launcher is a floating panel that starts at the dock's exact size and shape and grows upward. p is how open it is, 0 to 1, so a finger can drive it directly. */
 const L={open:false,full:false,p:0,H:0,HF:0,dockH:64,timer:null}; /* p: 0 = dock, 1 = open, 2 = full screen */
+/* Drag the dock's icons into a new order (Edit dock). Pointer events so it works with a finger or a mouse; the row
+   swallows touch events so the panel behind it does not start its own drag. */
+function dockDragInit(){const row=$('#dockrow');if(!row)return;let st=null;const kids=()=>[...row.children];
+  ['touchstart','touchmove','touchend'].forEach(t=>row.addEventListener(t,e=>e.stopPropagation(),{passive:true}));
+  row.addEventListener('pointerdown',e=>{const el=e.target.closest('.dslot');if(!el||st)return;const k=kids(),step=k.length>1?k[1].getBoundingClientRect().left-k[0].getBoundingClientRect().left:el.offsetWidth;st={el,i:+el.dataset.i,to:+el.dataset.i,x0:e.clientX,step,id:e.pointerId};try{row.setPointerCapture(e.pointerId)}catch(x){}el.classList.add('drag')});
+  row.addEventListener('pointermove',e=>{if(!st||e.pointerId!==st.id)return;const dx=e.clientX-st.x0,n=kids().length,to=Math.max(0,Math.min(n-1,st.i+Math.round(dx/st.step)));st.el.style.transform=`translateX(${dx}px) scale(1.1)`;
+    if(to!==st.to){st.to=to;haptic()}kids().forEach((c,j)=>{if(c===st.el)return;let sh=0;if(st.i<to&&j>st.i&&j<=to)sh=-st.step;if(st.i>to&&j<st.i&&j>=to)sh=st.step;c.style.transform=sh?`translateX(${sh}px)`:''})});
+  const end=e=>{if(!st||(e.pointerId!=null&&e.pointerId!==st.id))return;const {i,to}=st;st=null;ignoreTapsUntil=Date.now()+300;if(to!==i){const d=dock().slice(),m=d.splice(i,1)[0];d.splice(to,0,m);S.settings.dock=d;save('settings');renderNav()}launcherRefresh()};
+  row.addEventListener('pointerup',end);row.addEventListener('pointercancel',end)}
 function launcherRender(){const d=dock(),tile=id=>{const it=ITEMS[id],pinned=d.includes(id),soon=it.kind==='soon';
     return `<button class="ltile ${soon?'soon':''} ${dockEdit&&pinned?'pinned':''}" data-a="${dockEdit&&!soon?'pin':'open'}" data-v="${id}"><svg viewBox="0 0 24 24">${ICON[id]}</svg><span>${it.label}</span>${soon?'<em>Soon</em>':dockEdit?`<em>${pinned?'In dock':'Add'}</em>`:''}</button>`};
   const inner=$('#linner'),el=$('#launch');L.dockH=$('#nav').offsetHeight||64;
   if(el.style.display!=='block'){el.style.transition='none';el.style.height=L.dockH+'px';el.style.display='block'}
   inner.style.height='auto';
   inner.innerHTML=withTicks(`<div class="grabline"></div><div class="row between"><h2>${dockEdit?'Choose your dock':'All features'}</h2><button class="btn sm" data-a="dock-edit">${dockEdit?'Done':'Edit dock'}</button></div>
-  <p class="small muted">${dockEdit?'Tap to add or remove. The dock holds 2 to 5 items.':'Tap one to open it. Pull up for full screen, down to close.'}</p><div class="lgrid">${Object.keys(ITEMS).map(tile).join('')}</div>`);
+  <p class="small muted">${dockEdit?'Drag the icons below into the order you want. Tap a tile underneath to add or remove it. The dock holds 2 to 5 items.':'Tap one to open it. Pull up for full screen, down to close.'}</p>
+  ${dockEdit?`<div id="dockrow" style="--n:${d.length}">${d.map((id,i)=>`<div class="dslot" data-i="${i}"><svg viewBox="0 0 24 24">${ICON[id]}</svg><span>${ITEMS[id].label}</span></div>`).join('')}</div>`:''}<div class="lgrid">${Object.keys(ITEMS).map(tile).join('')}</div>`);if(dockEdit)dockDragInit();
   L.H=Math.max(L.dockH+1,Math.min(inner.scrollHeight,Math.round((window.innerHeight||700)*.76)));inner.style.height=L.H+'px';
   let top=59;try{top=parseFloat(getComputedStyle($('#scrim')).paddingTop)||59}catch(e){}
   let bottom=0;try{bottom=$('#nav').getBoundingClientRect().bottom}catch(e){}L.HF=Math.max(L.H,Math.round((bottom||((window.innerHeight||700)-14))-top))}
@@ -941,7 +955,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'apply-update':applyUpdate();break;
   case 'dock-edit':dockEdit=!dockEdit;launcherRefresh();break;
   case 'pin':{let d=dock().slice();if(d.includes(v)){if(d.length<=2){toast('Keep at least 2 items in the dock.');break}d=d.filter(x=>x!==v)}else{if(d.length>=5){toast('The dock is full. Remove one first.');break}d.push(v)}
-    S.settings.dock=Object.keys(ITEMS).filter(k=>d.includes(k));save('settings');renderNav();launcherRefresh();break}
+    S.settings.dock=d;save('settings');renderNav();launcherRefresh();break}
   case 'settings':settingsSheet();break;
   case 'settings-account':setTab='account';settingsSheet();break;
   case 'set-tab':setTab=v;settingsSheet();$('#sheet').scrollTop=0;break;
