@@ -299,7 +299,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.55';
+const LB=2.20462, DAY=864e5, VERSION='0.56';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -542,7 +542,7 @@ function home(){const d=V(),ws=weekStart(),wk=d.workouts.filter(w=>w.start>=ws),
 
 /* A routine opened from the Train tab: everything in it, what you did last time, and the choice to start. */
 function routineSheet(id){const r=S.routines.find(x=>x.id===id);if(!r)return;
-  openSheet(`<h2 style="margin-bottom:2px">${esc(r.name)}</h2><p class="small">${r.exIds.length} exercise${r.exIds.length===1?'':'s'}</p><div class="stack"><div class="list">${r.exIds.map(x=>{const ex=exById(x),prev=prevSets(x);return `<div class="tap" data-a="ex" data-v="${esc(x)}"><div class="row between"><span style="font-weight:600">${esc(ex.name)}</span><span class="small muted">${ex.muscle}</span></div><div class="small muted num">${prev?'Last time: '+prev.map(s=>disp(s.w||0)+' × '+s.r).join('   ·   '):'Not logged yet'}</div></div>`}).join('')}</div>
+  openSheet(`<h2 style="margin-bottom:2px">${esc(r.name)}</h2><p class="small">${r.exIds.length} exercise${r.exIds.length===1?'':'s'}${typeof estRoutine==='function'&&r.exIds.length?' · about '+estRoutine(r.exIds)+' minutes':''}</p><div class="stack"><div class="list">${r.exIds.map(x=>{const ex=exById(x),prev=prevSets(x);return `<div class="tap" data-a="ex" data-v="${esc(x)}"><div class="row between"><span style="font-weight:600">${esc(ex.name)}</span><span class="small muted">${ex.muscle}</span></div><div class="small muted num">${prev?'Last time: '+prev.map(s=>disp(s.w||0)+' × '+s.r).join('   ·   '):'Not logged yet'}</div></div>`}).join('')}</div>
   <div class="row"><button class="btn danger" style="flex:1" data-a="del-routine" data-v="${r.id}">Delete</button><button class="btn primary" style="flex:2" data-a="start-routine" data-v="${r.id}">Start workout</button></div></div>`,'routine')}
 /* Set types: w warm-up, d drop set, f to failure. Warm-ups are kept apart from working sets when a workout is saved
    (exercise.warm), so PRs, volume, ranks and the Coach only ever count working sets. */
@@ -559,10 +559,10 @@ function train(){const a=S.active;if(!a){const last=S.workouts[S.workouts.length
   <section class="glass card"><h2>Routines</h2>${S.routines.length?`<div class="list">${S.routines.map(r=>`<button class="row between" style="width:100%;text-align:left" data-a="routine" data-v="${r.id}"><span style="min-width:0"><span style="font-weight:600;display:block">${esc(r.name)}</span><span class="small muted">${r.exIds.length} exercise${r.exIds.length===1?'':'s'} · ${r.exIds.slice(0,3).map(x=>esc(exById(x).name)).join(', ')}${r.exIds.length>3?' and more':''}</span></span><span class="chip">View</span></button>`).join('')}</div>`:'<div class="muted small">Finish a workout and choose Save as routine to reuse it here.</div>'}</section>
   ${typeof coachTrain==='function'?coachTrain():''}`}
 
-  return `<div class="top"><div style="min-width:0;flex:1"><input type="text" id="wname" data-i="wname" value="${esc(a.name)}" aria-label="Workout name" style="background:none;border:0;padding:0;font-family:var(--display);font-size:28px;font-weight:900;min-height:0"><div class="sub num" id="elapsed"></div></div><button class="btn sm" data-a="plates">Plates</button></div>
+  return `<div class="top"><div style="min-width:0;flex:1"><input type="text" id="wname" data-i="wname" value="${esc(a.name)}" aria-label="Workout name" style="background:none;border:0;padding:0;font-family:var(--display);font-size:28px;font-weight:900;min-height:0"><div class="sub num" id="elapsed"></div><div class="small muted">${typeof estLeft==='function'?estLeft():''}</div></div><button class="btn sm" data-a="plates">Plates</button></div>
   ${a.exercises.map((e,i)=>{const ex=exById(e.exId),pe=prevEx(e.exId),best=bestOf(S.workouts,e.exId),linked=i>0&&a.exercises[i-1].ss;let wn=0;
     return `${linked?'<div class="sslink">Superset</div>':''}<section class="glass card ex ${e.ss||linked?'ss':''}"><div class="row between"><div><h3>${esc(ex.name)}</h3><div class="small muted">${ex.muscle}${ex.bw?' · bodyweight, enter added weight':''}</div></div><button class="btn sm danger" data-a="rm-ex" data-x="${i}">Remove</button></div>
-    <div class="exmeta"><button class="chip" data-a="ex-rest" data-x="${i}">Rest ${restLabel(e.exId)}</button><button class="chip" data-a="ex-swap" data-x="${i}">Swap</button>${i<a.exercises.length-1?`<button class="chip ${e.ss?'on':''}" data-a="ex-ss" data-x="${i}">Superset with next</button>`:''}</div>
+    <div class="exmeta"><button class="chip" data-a="ex-rest" data-x="${i}">Rest ${restLabel(e.exId)}</button><button class="chip" data-a="ex-swap" data-x="${i}">Swap</button><button class="chip" data-a="ex-warm" data-x="${i}">Warm-up</button>${i>0?`<button class="chip" data-a="ex-up" data-x="${i}" aria-label="Move ${esc(ex.name)} earlier">↑</button>`:''}${i<a.exercises.length-1?`<button class="chip" data-a="ex-down" data-x="${i}" aria-label="Move ${esc(ex.name)} later">↓</button>`:''}${i<a.exercises.length-1?`<button class="chip ${e.ss?'on':''}" data-a="ex-ss" data-x="${i}">Superset with next</button>`:''}</div>
     <input type="text" class="exnote" data-i="exnote" data-v="${esc(e.exId)}" value="${esc((S.settings.exNotes||{})[e.exId]||'')}" placeholder="Note for this exercise (seat height, cues)" aria-label="Note for ${esc(ex.name)}" maxlength="140">
     <div class="sets"><span class="h">Set</span><span class="h">Last time</span><span class="h">${ex.bw?'+'+unit():unit()}</span><span class="h">Reps</span><span class="h">Done</span>
     ${e.sets.map((s,j)=>{const p=prevFor(pe,e.sets,j),isPr=s.t!=='w'&&s.done&&best&&score(ex,s)>best.sc+1e-6,lab=s.t?SETT[s.t][0]:++wn;if(s.t&&s.t!=='w')wn++;
@@ -616,7 +616,7 @@ function exSheet(id){const ex=exById(id),ses=[];
     <div class="tile"><div style="font-weight:800;margin-bottom:4px">Recent sessions</div><div class="list">${ses.slice(-5).reverse().map(s=>`<div class="small"><div>${niceDate(s.t)}</div><div class="muted num">${s.sets.map(x=>disp(x.w||0)+' × '+x.r).join('   ·   ')}</div></div>`).join('')}</div></div>`}
   const ladder=STD[id]?`<div class="tile"><div class="row" style="gap:12px;margin-bottom:10px">${emblem(r?r.tier:0,44)}<div><div class="num" style="font-weight:900;font-size:18px;color:${r?TIERS[r.tier][1]:'var(--ink-3)'}">${r?TIERS[r.tier][0]:'Unranked'}</div><div class="small muted">${r?r.ratio.toFixed(2)+'× bodyweight'+(r.nextKg?' · '+disp(r.nextKg-r.kg)+' '+u+' to '+TIERS[r.tier+1][0]:''):bw?'Log a set to get a rank':'Log your bodyweight to get a rank'}</div></div></div>
     ${bw?`<div class="ladder">${thresholds(id).map((t,i)=>`<span class="${r&&r.tier>i?'got':''}" style="${r&&r.tier>i?'color:'+TIERS[i+1][1]:''}">${TIERS[i+1][0]} ${disp(t*bw)}</span>`).join('')}</div><div class="small muted" style="margin-top:8px">Estimated 1RM needed for each tier at ${disp(bw)} ${u} bodyweight.</div>`:''}</div>`:'';
-  openSheet(`<h2 style="margin-bottom:2px">${esc(ex.name)}</h2><p class="small">${ex.muscle}${ses.length?' · first logged '+niceDate(ses[0].t):''}</p><div class="stack">${ladder}${body}</div>`,'ex')}
+  openSheet(`<h2 style="margin-bottom:2px">${esc(ex.name)}</h2><p class="small">${ex.muscle}${ses.length?' · first logged '+niceDate(ses[0].t):''}</p><div class="stack">${typeof cueTile==='function'?cueTile(id):''}${ladder}${body}</div>`,'ex')}
 
 function ranks(){const bw=bwNow(),o=overall();
   return `<div class="top"><h1>Ranks</h1><button class="info" data-a="info" data-v="ranks">How ranks work</button></div>${demoBanner()}
@@ -783,6 +783,7 @@ function settingsSheet(){
       <div class="small muted">These five apply to this device only.</div>`})()}`,
     devices:`<div class="tile small row between"><span>Start workouts on Apple Watch<br><span class="muted">${watchOn()?'On for this phone':'Off'}</span></span><button class="btn sm" data-a="watch-guide">${watchOn()?'Options':'Set up'}</button></div>
       <div class="tile small row between"><span>${isApp()?'On your Home Screen':'Add Apex to your Home Screen'}</span><button class="btn sm" data-a="install-guide">${isApp()?'Share':'Show me how'}</button></div>
+      ${typeof devicesExtra==='function'?devicesExtra():''}
       <div class="tile small">Apple Health and other watches cannot connect to a web app directly. The Apple Watch option works through a shortcut.</div>`,
     about:`<div class="tile small row between"><span>Apex ${VERSION}</span><button class="btn sm" data-a="check-update">Check for updates</button></div>
       <div class="tile small row between"><span>What changed in each version</span><button class="btn sm" data-a="notes">Patch notes</button></div>
@@ -790,7 +791,7 @@ function settingsSheet(){
       <p class="small muted" style="margin:0;font-size:11px">Screen ${innerWidth}×${innerHeight} of ${screen.width}×${screen.height} · page ${document.documentElement.clientHeight} · fill ${window.vgap||0} · app ${(matchMedia('(display-mode:standalone)').matches||navigator.standalone)?'yes':'no'}</p>`,
     food:typeof nutSettingsRow==='function'?nutSettingsRow():'',
     account:sync+acct+(fbUser?'<button class="btn block danger" data-a="delete-sheet">Delete my account</button>':''),
-    security:`<div class="row between"><span>App lock</span><button class="btn sm" data-a="pin">${pinGet()?'On · change':'Set a PIN'}</button></div><div class="tile small">The app lock asks for a PIN when Apex opens and after a minute in the background. It protects this device only.</div>${vault}`,
+    security:`<div class="row between"><span>App lock</span><button class="btn sm" data-a="pin">${pinGet()?'On · change':'Set a PIN'}</button></div><div class="tile small">The app lock asks for a PIN when Apex opens and after a minute in the background. It protects this device only.</div>${typeof faceRow==='function'?faceRow():''}${vault}`,
     data:`${typeof backupNote==='function'?backupNote():''}<button class="btn block" data-a="export">Export a backup file</button>
       <button class="btn block" data-a="export-photos">Export a backup with progress photos</button>
       <label class="btn block">Restore from a backup file<input type="file" id="imp-json" accept=".json,application/json" hidden></label>
@@ -1028,7 +1029,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
-  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof progressAction==='function')progressAction(a,v,b);if(typeof extrasAction==='function')extrasAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
+  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof progressAction==='function')progressAction(a,v,b);if(typeof extrasAction==='function')extrasAction(a,v,b);if(typeof moreAction==='function')moreAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
   }});
 document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
@@ -1044,7 +1045,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 /* ================= boot ================= */
 </script>
 <script>/* the version in the address lets the service worker keep these files and serve them instantly; a new version asks for new addresses */
-['nutrition','meals','coach','summary','studies','board','progress','extras'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
+['nutrition','meals','coach','summary','studies','board','progress','extras','more'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
 <script>
 /* iOS can hand a Home Screen app a page that is shorter than the screen, leaving a dark strip under the dock. Measure the
    shortfall and stretch the page by that much. iOS changes the page height at moments that fire no resize event (coming back
