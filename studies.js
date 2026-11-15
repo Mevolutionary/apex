@@ -104,13 +104,7 @@ function studySheet(id,replace){const p=stFind(id);if(!p)return;stOpen=id;const 
 function stRefreshAI(id){const el=document.getElementById('st-ai'),p=stFind(id);if(el&&p&&stOpen===id&&$('#sheet').dataset.kind==='study'){el.innerHTML=typeof withTicks==='function'?withTicks(stAIBlock(p)):stAIBlock(p);if(typeof sheetMeasure==='function')sheetMeasure(true)}}
 
 /* text-only Gemini call; same key, model choice and sign-in rule as the food scanner */
-async function stAsk(prompt){if(!aiAllowed())throw{code:'signin'};const key=gKey();if(!key)throw{code:'nokey'};
-  const body={contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.2,responseMimeType:'application/json'}};
-  for(let a=0;a<3;a++){const model=await gModel(key,a>0),r=await fetch(GAPI+'models/'+model+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':key},body:JSON.stringify(body)});
-    if(r.status===404){lsDel('.gm');continue}if(r.status===400&&body.generationConfig.responseMimeType){delete body.generationConfig.responseMimeType;continue}
-    if(r.status===429)throw{code:'limit',status:429};if(r.status===401||r.status===403)throw{code:'badkey',status:r.status};if(!r.ok)throw{code:'fail',status:r.status};
-    const j=await r.json(),txt=(((j.candidates||[])[0]||{}).content||{parts:[]}).parts.map(x=>x.text||'').join(''),m=txt.match(/\{[\s\S]*\}/);if(!m)throw{code:'unreadable'};try{return JSON.parse(m[0])}catch(e){throw{code:'unreadable'}}}
-  throw{code:'fail'}}
+const stAsk=prompt=>gCall({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.2,responseMimeType:'application/json'}});
 const stPrompt=p=>`You are a careful sports science reviewer helping a recreational lifter decide how much to trust a study.
 Use ONLY the information below. Do not use outside knowledge about this paper and do not invent numbers, sample sizes or results. If something is not stated, say it is not stated.
 
@@ -129,12 +123,12 @@ Reply with JSON only, in plain English a gym-goer understands, with these keys:
 "takeaway": one or two sentences on what, if anything, a lifter should change. Say "nothing yet" if the evidence does not justify a change.`;
 async function stRunAI(id){const p=stFind(id);if(!p||stBusyAI)return;if(!aiAllowed()){aiGate();return}if(!gKey()){geminiGuide();return}
   stBusyAI=id;stRefreshAI(id);
-  try{const o=await stAsk(stPrompt(p)),arr=a=>Array.isArray(a)?a.map(x=>String(x).slice(0,400)).slice(0,4):[];
+  try{const o=await Promise.race([stAsk(stPrompt(p)),new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),60000))]),arr=a=>Array.isArray(a)?a.map(x=>String(x).slice(0,400)).slice(0,4):[];
     const out={verdict:['strong','moderate','weak','unclear'].includes(o.verdict)?o.verdict:'unclear',why:String(o.why||'').slice(0,500),did:String(o.did||'').slice(0,600),found:arr(o.found),limits:arr(o.limits),takeaway:String(o.takeaway||'').slice(0,600),at:Date.now()};
     const d=stStore();d.ai[id]=out;stPut(d);stBusyAI=false;stRefreshAI(id);if(tab==='studies'&&!$('#scrim').classList.contains('on'))render()}
   catch(e){stBusyAI=false;stRefreshAI(id);const code=e&&e.code;
     if(code==='signin'){aiGate();return}if(code==='nokey'){geminiGuide();return}
-    const msg={limit:'The free AI allowance is used up for now. Try again later.',badkey:'Google rejected the AI key. Check it under Settings, Nutrition.',unreadable:'The AI gave an answer that could not be read. Try again.'}[code]||(navigator.onLine===false?'This device is offline.':'The AI overview did not work this time. Try again in a moment.');
+    const msg={busy:'Google\'s AI is overloaded right now. That is on their side. Try again in a minute.',timeout:'The AI took too long to answer. Try again in a moment.',limit:'The free AI allowance is used up for now. Try again later.',badkey:'Google rejected the AI key. Check it under Settings, Nutrition.',unreadable:'The AI gave an answer that could not be read. Try again.'}[code]||(navigator.onLine===false?'This device is offline.':'The AI overview did not work this time. Try again in a moment.');
     toast(msg+(code?' ('+code+(e.status?' '+e.status:'')+')':''))}}
 
 function stHow(){const row=k=>{const L=ST_LEVELS[k];return`<div class="tile small"><span class="lvl l${L[0]}"><i></i>${L[1]}</span><div style="margin-top:8px">${L[2]}</div></div>`};
