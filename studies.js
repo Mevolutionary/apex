@@ -27,7 +27,7 @@ const ST_TOPICS=[
 const ST_STRONG=' AND (PUB_TYPE:"meta-analysis" OR PUB_TYPE:"systematic review" OR PUB_TYPE:"randomized controlled trial")';
 const ST_BASE=' AND HAS_ABSTRACT:y AND SRC:MED NOT (TITLE:rat OR TITLE:rats OR TITLE:mice OR TITLE:mouse)';
 const ST_API='https://www.ebi.ac.uk/europepmc/webservices/rest/search';
-let stTopic='hypertrophy',stStrong=true,stView='new',stQ='',stFeed={},stOpen=null,stBusyAI=false;
+let stTopic='hypertrophy',stStrong=true,stView='new',stQ='',stFeed={},stOpen=null;const stBusyAI=new Set();
 
 /* saved papers and AI overviews stay on this device */
 const stStore=()=>{try{return Object.assign({saved:{},ai:{}},JSON.parse(lsGet('.studies')||'{}'))}catch(e){return{saved:{},ai:{}}}};
@@ -85,8 +85,8 @@ function studies(){const d=stStore(),saved=Object.values(d.saved).sort((a,b)=>(b
   return head+chips+body}
 
 function stAIBlock(p){const d=stStore(),o=d.ai[p.id];
-  if(stBusyAI===p.id)return`<div class="verdict unclear"><div class="row" style="gap:10px"><div class="spin sm"></div><span>Reading the abstract…</span></div></div>`;
-  if(!o)return`<button class="btn block" data-a="st-ai" data-v="${esc(p.id)}">Get AI overview</button><p class="small muted" style="margin:8px 0 0">Uses your own Gemini key to judge whether the study holds weight and what to take from it.</p>`;
+  if(stBusyAI.has(p.id))return`<div class="verdict unclear"><div class="row" style="gap:10px"><div class="spin sm"></div><span>Reading the abstract…</span></div></div>`;
+  if(!o)return`<button class="btn block" data-a="st-ai" data-v="${esc(p.id)}">Get AI overview</button><p class="small muted" style="margin:8px 0 0">Uses your own Gemini key to judge whether the study holds weight and what to take from it. Once your key is set up, this starts by itself when you open a study.</p>`;
   const V={strong:'Holds weight',moderate:'Holds some weight',weak:'Weak evidence',unclear:'Cannot tell from the abstract'}[o.verdict]||'Cannot tell from the abstract',li=a=>(a||[]).filter(Boolean).map(x=>`<li>${esc(x)}</li>`).join('');
   return`<div class="verdict ${esc(o.verdict||'unclear')}"><div class="small muted">AI overview</div><div class="v">${V}</div>${o.why?`<div style="margin-top:6px">${esc(o.why)}</div>`:''}</div>
   ${o.did?`<div><div style="font-weight:700">What they did</div><div class="muted" style="margin-top:4px">${esc(o.did)}</div></div>`:''}
@@ -100,11 +100,11 @@ function studySheet(id,replace){const p=stFind(id);if(!p)return;stOpen=id;const 
   <div id="st-ai" class="stack">${stAIBlock(p)}</div>
   <div><div style="font-weight:700;margin-bottom:6px">Abstract</div><div class="abs">${esc(p.abs||'No abstract is available for this paper.')}</div></div>
   <div class="row"><a class="btn" style="flex:1;text-align:center" href="${link}" target="_blank" rel="noopener">${p.oa?'Read the paper (free)':'Open the paper'}</a><button class="btn" style="flex:1" data-a="st-save" data-v="${esc(p.id)}">${d.saved[p.id]?'Remove from saved':'Save'}</button></div></div>`;
-  openSheet(html,'study')}
+  openSheet(html,'study');if(!d.ai[p.id]&&p.abs&&aiAllowed()&&gKey())stRunAI(p.id)}
 function stRefreshAI(id){const el=document.getElementById('st-ai'),p=stFind(id);if(el&&p&&stOpen===id&&$('#sheet').dataset.kind==='study'){el.innerHTML=typeof withTicks==='function'?withTicks(stAIBlock(p)):stAIBlock(p);if(typeof sheetMeasure==='function')sheetMeasure(true)}}
 
 /* text-only Gemini call; same key, model choice and sign-in rule as the food scanner */
-const stAsk=prompt=>gCall({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.2,responseMimeType:'application/json'}});
+const stAsk=prompt=>gCall({contents:[{parts:[{text:prompt}]}],generationConfig:{temperature:.2,responseMimeType:'application/json'}},{fast:true});
 const stPrompt=p=>`You are a careful sports science reviewer helping a recreational lifter decide how much to trust a study.
 Use ONLY the information below. Do not use outside knowledge about this paper and do not invent numbers, sample sizes or results. If something is not stated, say it is not stated.
 
@@ -121,12 +121,12 @@ Reply with JSON only, in plain English a gym-goer understands, with these keys:
 "found": array of 1 to 3 short findings, with numbers only if the abstract gives them
 "limits": array of 1 to 4 short reasons to be careful
 "takeaway": one or two sentences on what, if anything, a lifter should change. Say "nothing yet" if the evidence does not justify a change.`;
-async function stRunAI(id){const p=stFind(id);if(!p||stBusyAI)return;if(!aiAllowed()){aiGate();return}if(!gKey()){geminiGuide();return}
-  stBusyAI=id;stRefreshAI(id);
-  try{const o=await Promise.race([stAsk(stPrompt(p)),new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),100000))]),arr=a=>Array.isArray(a)?a.map(x=>String(x).slice(0,400)).slice(0,4):[];
+async function stRunAI(id){const p=stFind(id);if(!p||stBusyAI.has(id))return;if(!aiAllowed()){aiGate();return}if(!gKey()){geminiGuide();return}
+  stBusyAI.add(id);stRefreshAI(id);
+  try{const o=await Promise.race([stAsk(stPrompt(p)),new Promise((_,rej)=>setTimeout(()=>rej({code:'timeout'}),60000))]),arr=a=>Array.isArray(a)?a.map(x=>String(x).slice(0,400)).slice(0,4):[];
     const out={verdict:['strong','moderate','weak','unclear'].includes(o.verdict)?o.verdict:'unclear',why:String(o.why||'').slice(0,500),did:String(o.did||'').slice(0,600),found:arr(o.found),limits:arr(o.limits),takeaway:String(o.takeaway||'').slice(0,600),at:Date.now()};
-    const d=stStore();d.ai[id]=out;stPut(d);stBusyAI=false;stRefreshAI(id);if(tab==='studies'&&!$('#scrim').classList.contains('on'))render()}
-  catch(e){stBusyAI=false;stRefreshAI(id);const code=e&&e.code;
+    const d=stStore();d.ai[id]=out;stPut(d);stBusyAI.delete(id);stRefreshAI(id);if(tab==='studies'&&!$('#scrim').classList.contains('on'))render()}
+  catch(e){stBusyAI.delete(id);stRefreshAI(id);const code=e&&e.code;
     if(code==='signin'){aiGate();return}if(code==='nokey'){geminiGuide();return}
     const msg={busy:'Google\'s AI is overloaded right now. That is on their side. Try again in a minute.',timeout:'The AI took too long to answer. Try again in a moment.',limit:'The free AI allowance is used up for now. Try again later.',badkey:'Google rejected the AI key. Check it under Settings, Nutrition.',unreadable:'The AI gave an answer that could not be read. Try again.'}[code]||(navigator.onLine===false?'This device is offline.':'The AI overview did not work this time. Try again in a moment.');
     toast(msg+(code?' ('+code+(e.status?' '+e.status:'')+(e.model?', '+e.model:'')+')':''))}}
