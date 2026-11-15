@@ -264,7 +264,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.25';
+const LB=2.20462, DAY=864e5, VERSION='0.26';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -757,6 +757,8 @@ let hapEl=null,lastTabDrag=0;
 function haptic(){try{if(navigator.vibrate){navigator.vibrate(8);return}
   if(!hapEl){const l=document.createElement('label');l.setAttribute('aria-hidden','true');l.style.cssText='position:fixed;left:-200px;top:0;opacity:0;pointer-events:none';const i=document.createElement('input');i.type='checkbox';i.setAttribute('switch','');i.tabIndex=-1;l.appendChild(i);document.body.appendChild(l);hapEl=l}
   hapEl.click()}catch(e){}}
+/* How far a released drag would coast, from its speed in px per ms. This is the projection iOS uses for scroll views and sheets (deceleration rate 0.998), capped so a hard flick cannot overshoot wildly. */
+const coast=v=>Math.max(-700,Math.min(700,v*499));
 function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   /* dock: drag along it and the glass highlight follows your finger; swipe up on it to open all features */
   let drag=null;const slot=()=>{const r=nav.getBoundingClientRect(),n=dock().length;return{r,n,w:(r.width-12)/n}},idxAt=x=>{const{r,n,w}=slot();return Math.max(0,Math.min(n-1,Math.floor((x-r.left-6)/w)))};
@@ -782,23 +784,23 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
     const o=swipeOrder(),n=o.indexOf(tab)+(dx<0?1:-1);if(n<0||n>=o.length)return;haptic();go(o[n])},{passive:true});
   /* pull the launcher back down into the dock */
   const la=$('#launch');let ld=null;
-  la.addEventListener('touchstart',e=>{ld=L.open?{y:e.touches[0].clientY,h0:lHeight(L.full?2:1),top:$('#linner').scrollTop<=0,on:false,dy:0,t0:Date.now()}:null},{passive:true});
-  la.addEventListener('touchmove',e=>{if(!ld)return;const dy=e.touches[0].clientY-ld.y;if(!ld.on){if(Math.abs(dy)<8)return;if(dy<0&&(L.full||L.HF-L.H<=24)){ld=null;return}if(dy>0&&!ld.top){ld=null;return}ld.on=true}
+  la.addEventListener('touchstart',e=>{ld=L.open?{y:e.touches[0].clientY,h0:lHeight(L.full?2:1),top:$('#linner').scrollTop<=0,on:false,dy:0,v:0,ly:e.touches[0].clientY,lt:Date.now()}:null},{passive:true});
+  la.addEventListener('touchmove',e=>{if(!ld)return;const cy=e.touches[0].clientY,now=Date.now(),dy=cy-ld.y;if(now>ld.lt){ld.v=ld.v*.4+(cy-ld.ly)/(now-ld.lt)*.6;ld.ly=cy;ld.lt=now}if(!ld.on){if(Math.abs(dy)<8)return;if(dy<0&&(L.full||L.HF-L.H<=24)){ld=null;return}if(dy>0&&!ld.top){ld=null;return}ld.on=true}
     e.preventDefault();ld.dy=dy;launcherSet(lFromH(ld.h0-dy),false)},{passive:false});
-  const endL=()=>{if(!ld)return;const d=ld;ld=null;if(!d.on)return;if(L.p<.72||d.dy>240||(d.dy>110&&d.dy/Math.max(1,Date.now()-d.t0)>.6)){launcherClose();return}
-    L.full=(L.full?d.dy<60:d.dy<-60)&&L.HF-L.H>24;haptic();launcherSet(L.full?2:1,true)};
+  const endL=()=>{if(!ld)return;const d=ld;ld=null;if(!d.on)return;const v=Date.now()-d.lt>120?0:d.v,landing=d.h0-d.dy-coast(v),stops=[[0,lHeight(0)],[1,lHeight(1)]].concat(L.HF-L.H>24?[[2,lHeight(2)]]:[]),to=stops.reduce((a,b)=>Math.abs(b[1]-landing)<Math.abs(a[1]-landing)?b:a)[0];
+    if(to===0){launcherClose();return}L.full=to===2;haptic();launcherSet(to,true)};
   la.addEventListener('touchend',endL);la.addEventListener('touchcancel',endL);
   /* sheets: pull up for full screen, pull down to shrink or dismiss */
   let sd=null;
-  sh.addEventListener('touchstart',e=>{sd=e.target.closest('input:not(.hx),select')?null:{y:e.touches[0].clientY,h0:SH.full?SH.hMax:SH.hN,top:sh.scrollTop<=0,on:false,dy:0,t0:Date.now()}},{passive:true});
-  sh.addEventListener('touchmove',e=>{if(!sd)return;const dy=e.touches[0].clientY-sd.y;
+  sh.addEventListener('touchstart',e=>{sd=e.target.closest('input:not(.hx),select')?null:{y:e.touches[0].clientY,h0:SH.full?SH.hMax:SH.hN,top:sh.scrollTop<=0,on:false,dy:0,v:0,ly:e.touches[0].clientY,lt:Date.now()}},{passive:true});
+  sh.addEventListener('touchmove',e=>{if(!sd)return;const cy=e.touches[0].clientY,now=Date.now(),dy=cy-sd.y;if(now>sd.lt){sd.v=sd.v*.4+(cy-sd.ly)/(now-sd.lt)*.6;sd.ly=cy;sd.lt=now}
     if(!sd.on){if(Math.abs(dy)<8)return;const up=dy<0;if((up&&(SH.full||!SH.canFull))||(!up&&!sd.top)){sd=null;return}sd.on=true}
     e.preventDefault();sd.dy=dy;const hh=sd.h0-dy;sh.style.transition='none';sh.classList.add('dragging');sh.style.setProperty('--p',SH.hMax>SH.hN?Math.max(0,Math.min(1,(hh-SH.hN)/(SH.hMax-SH.hN))).toFixed(3):'0');
     if(hh>=SH.hN){sh.style.height=Math.min(SH.hMax,hh)+'px';sh.style.transform=''}else{sh.style.height=SH.hN+'px';sh.style.transform='translateY('+(SH.hN-hh)+'px)'}},{passive:false});
   const endSheet=()=>{if(!sd)return;const d=sd;sd=null;if(!d.on)return;sh.classList.remove('dragging');const hh=d.h0-d.dy;
-    /* one long or fast pull down closes the sheet outright, even from fully open */
-    const speed=d.dy/Math.max(1,Date.now()-d.t0);if(hh<SH.hN-90||d.dy>240||(d.dy>110&&speed>.6)){haptic();dismissSheet();return}
-    SH.full=d.h0<SH.hMax?d.dy<-60:d.dy<60;if(!SH.canFull)SH.full=false;
+    const v=Date.now()-d.lt>120?0:d.v,landing=hh-coast(v),stops=[0,SH.hN].concat(SH.canFull?[SH.hMax]:[]),to=stops.reduce((a,b)=>Math.abs(b-landing)<Math.abs(a-landing)?b:a);
+    if(to===0){haptic();dismissSheet();return}
+    SH.full=SH.canFull&&to===SH.hMax;
     sh.style.transition='height .5s cubic-bezier(.22,1.02,.32,1),transform .4s cubic-bezier(.22,1.02,.32,1)';sh.style.transform='';const t=SH.full?SH.hMax:SH.hN;sh.style.height=t+'px';sh.dataset.h=t;sh.style.setProperty('--p',SH.full?'1':'0');haptic()};
   sh.addEventListener('touchend',endSheet);sh.addEventListener('touchcancel',endSheet)}
 
