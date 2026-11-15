@@ -271,7 +271,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.35';
+const LB=2.20462, DAY=864e5, VERSION='0.36';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -674,6 +674,20 @@ function openSheet(html,kind){runCleanup();if(pushMode){pushMode=false;const sc0
   if(!same){if(wasOpen){contentIntro(sh,60);countUp(sh)}else sheetIntro(tapOrigin())}}
 function closeSheet(){runCleanup();const sc=$('#scrim');confirmCb=null;clearStack();if(!sc.classList.contains('on')||sc.classList.contains('closing'))return;sc.classList.add('closing');clearTimeout(SH.timer);SH.timer=setTimeout(()=>{sc.classList.remove('on','closing');SH.full=false;const s2=$('#sheet');s2.dataset.h='';s2.style.animation='';s2.style.opacity=''},290)}
 function confirmSheet(title,msg,label,cb){confirmCb=cb;openSheet(`<h2>${title}</h2><p>${msg}</p><div class="row"><button class="btn" style="flex:1" data-a="close">Keep</button><button class="btn danger" style="flex:1" data-a="confirm">${label}</button></div>`)}
+const isApp=()=>{try{return matchMedia('(display-mode:standalone)').matches||!!navigator.standalone}catch(e){return false}};
+const APP_URL='https://mevolutionary.github.io/apex/';
+function installGuide(){const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),and=/Android/.test(navigator.userAgent);
+  const st=(n,t,d,shot)=>`<div class="step"><b>${n}</b><div><div style="font-weight:700">${t}</div><div class="small muted">${d}</div>${shot?`<div class="shot">${shot}</div>`:''}</div></div>`;
+  const shareIc='<svg viewBox="0 0 24 24" style="width:18px;height:18px;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+  const iosSteps=st(1,'Open this page in Safari','It has to be Safari. If you are in another browser or inside a chat app, copy the link below and paste it into Safari.',`<div class="bar">${APP_URL.replace('https://','')}</div>`)
+    +st(2,'Tap the Share button','It is the square with an arrow pointing up. On newer iPhones tap the three dots first, then Share.',`${shareIc} Share`)
+    +st(3,'Choose "Add to Home Screen"','Scroll down the list to find it. If it is missing, tap "View more" or "Edit Actions" at the bottom.','<span class="fakebtn">Add to Home Screen</span>')
+    +st(4,'Leave "Open as Web App" on and tap Add','Apex now has its own icon and opens full screen like any other app.','')
+    +st(5,'Open Apex from the new icon and sign in','The Home Screen app keeps its own data, separate from Safari. Sign in with the same email and everything syncs across.','');
+  const andSteps=st(1,'Open this page in Chrome','',`<div class="bar">${APP_URL.replace('https://','')}</div>`)+st(2,'Tap the three dots at the top right','','')+st(3,'Choose "Add to Home screen" or "Install app"','Then confirm. Apex appears with your other apps.','<span class="fakebtn">Install app</span>')+st(4,'Open Apex from the new icon and sign in','','');
+  const deskSteps=st(1,'Open this link on your phone','Send it to yourself or share it below, then open this guide again on the phone for the exact steps.',`<div class="bar">${APP_URL.replace('https://','')}</div>`);
+  const head=isApp()?'<h2>Share Apex</h2><p>This copy is already on your Home Screen. To help a friend set theirs up, send them the link. These are the steps they follow on an iPhone.</p>':'<h2>Add Apex to your Home Screen</h2><p>This gives Apex its own icon and opens it full screen without the browser bars. It takes under a minute.</p>';
+  pushSheet(head+`<div class="stack">${and?andSteps:(ios||isApp())?iosSteps:deskSteps}</div><div class="row" style="margin-top:16px"><button class="btn" style="flex:1" data-a="app-share">Share link</button><button class="btn" style="flex:1" data-a="app-copy">Copy link</button></div>`,'guide')}
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),3200)}
 const INFO={
  ranks:`<h2>How ranks work</h2><p>Each ranked lift takes your best set and converts it to an estimated one-rep max: weight × (1 + reps ÷ 30), the Epley formula. A single rep counts as the weight itself.</p><p>That number is divided by your latest bodyweight. The result is compared with a ladder of bodyweight multiples for that lift. For example, a bench press of 1× bodyweight is Gold and 1.5× is Diamond. Pull-ups count your bodyweight plus any added weight.</p><p>Your overall rank is the average across the ranked lifts you have logged. The ladders are approximate, built from commonly used strength standards. They compare you with general lifting benchmarks, since this app has no other users to rank against.</p>`,
@@ -695,6 +709,7 @@ function settingsSheet(){
     general:`<div class="row between"><span>Weight units</span>${seg('unit',[['kg','kg'],['lb','lb']])}</div>
       <div class="row between"><span>Rank standards</span>${seg('sex',[['male','Male'],['female','Female']])}</div>
       <div><div style="margin-bottom:8px">Rest timer between sets</div>${seg('rest',[[0,'Off'],[60,'60s'],[90,'90s'],[120,'120s'],[180,'180s']]).replace('class="seg"','class="seg" style="justify-content:space-between"')}</div>
+      <div class="tile small row between"><span>${isApp()?'On your Home Screen':'Add Apex to your Home Screen'}</span><button class="btn sm" data-a="install-guide">${isApp()?'Share':'Show me how'}</button></div>
       <div class="tile small row between"><span>Apex ${VERSION}</span><button class="btn sm" data-a="check-update">Check for updates</button></div>
       <p class="small muted" style="margin:0;font-size:11px">Screen ${innerWidth}×${innerHeight} of ${screen.width}×${screen.height} · fill ${window.vgap||0} · app ${(matchMedia('(display-mode:standalone)').matches||navigator.standalone)?'yes':'no'}</p>`,
     food:typeof nutSettingsRow==='function'?nutSettingsRow():'',
@@ -849,6 +864,9 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'open':openItem(v);break;
   case 'launcher':launcherOpen();break;
   case 'check-update':checkUpdate(true);break;
+  case 'install-guide':installGuide();break;
+  case 'app-copy':navigator.clipboard.writeText(APP_URL).then(()=>toast('Link copied.')).catch(()=>toast('Could not copy. The link is '+APP_URL));break;
+  case 'app-share':if(navigator.share)navigator.share({title:'Apex',url:APP_URL}).catch(()=>{});else navigator.clipboard.writeText(APP_URL).then(()=>toast('Link copied.')).catch(()=>toast('The link is '+APP_URL));break;
   case 'apply-update':applyUpdate();break;
   case 'dock-edit':dockEdit=!dockEdit;launcherRefresh();break;
   case 'pin':{let d=dock().slice();if(d.includes(v)){if(d.length<=2){toast('Keep at least 2 items in the dock.');break}d=d.filter(x=>x!==v)}else{if(d.length>=5){toast('The dock is full. Remove one first.');break}d.push(v)}
