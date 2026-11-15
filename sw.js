@@ -1,6 +1,16 @@
-/* Keeps the app usable with no signal at the gym. Always asks the server first (skipping the browser's own cache), so a new version shows up as soon as you are online. */
-const CACHE='apex-shell-v44';
-self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','index.html','nutrition.js','coach.js','summary.js','studies.js','config.js','manifest.webmanifest','icon-192.png'])).catch(()=>{}))});
+/* Keeps the app usable with no signal at the gym and makes it open fast.
+   - index.html and other unversioned files: ask the server first, but fall back to the saved copy after 1.2 s so a slow
+     connection never holds up opening the app (the fresh copy is still saved for next time).
+   - files with ?v=<version> in the address (the app's scripts), fonts and the sync library never change for a given
+     address, so the saved copy is used straight away with no network wait. */
+const CACHE='apex-shell-v45';
+self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','index.html','config.js','manifest.webmanifest','icon-192.png'])).catch(()=>{}))});
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method!=='GET'||u.origin!==location.origin||u.searchParams.has('u'))return;
-  e.respondWith(fetch(r.url,{cache:'no-cache'}).then(res=>{if(res.ok){const copy=res.clone();caches.open(CACHE).then(c=>c.put(r,copy))}return res}).catch(()=>caches.match(r,{ignoreSearch:true}).then(m=>m||caches.match('index.html'))))});
+const keep=(req,res)=>{if(res&&(res.ok||res.type==='opaque')){const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{})}return res};
+self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method!=='GET')return;
+  const own=u.origin===location.origin,lib=u.hostname==='fonts.googleapis.com'||u.hostname==='fonts.gstatic.com'||(u.hostname==='www.gstatic.com'&&u.pathname.startsWith('/firebasejs/'));
+  if(!own&&!lib)return;if(own&&u.searchParams.has('u'))return;
+  if(lib||(own&&u.searchParams.has('v'))){e.respondWith(caches.match(r).then(m=>m||fetch(r).then(res=>keep(r,res))));return}
+  e.respondWith((async()=>{const cached=await caches.match(r,{ignoreSearch:true}),net=fetch(r.url,{cache:'no-cache'}).then(res=>keep(r,res));
+    if(!cached)return net.catch(()=>caches.match('index.html'));
+    e.waitUntil(net.catch(()=>{}));return Promise.race([net.catch(()=>cached),new Promise(res=>setTimeout(()=>res(cached),1200))])})())});
