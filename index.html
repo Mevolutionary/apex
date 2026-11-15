@@ -271,7 +271,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.36';
+const LB=2.20462, DAY=864e5, VERSION='0.37';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -675,6 +675,18 @@ function openSheet(html,kind){runCleanup();if(pushMode){pushMode=false;const sc0
 function closeSheet(){runCleanup();const sc=$('#scrim');confirmCb=null;clearStack();if(!sc.classList.contains('on')||sc.classList.contains('closing'))return;sc.classList.add('closing');clearTimeout(SH.timer);SH.timer=setTimeout(()=>{sc.classList.remove('on','closing');SH.full=false;const s2=$('#sheet');s2.dataset.h='';s2.style.animation='';s2.style.opacity=''},290)}
 function confirmSheet(title,msg,label,cb){confirmCb=cb;openSheet(`<h2>${title}</h2><p>${msg}</p><div class="row"><button class="btn" style="flex:1" data-a="close">Keep</button><button class="btn danger" style="flex:1" data-a="confirm">${label}</button></div>`)}
 const isApp=()=>{try{return matchMedia('(display-mode:standalone)').matches||!!navigator.standalone}catch(e){return false}};
+const WATCH_SC='Apex Workout',watchOn=()=>{try{return localStorage.getItem('apex.watch')==='1'}catch(e){return false}};
+function watchFire(){try{location.href='shortcuts://run-shortcut?name='+encodeURIComponent(WATCH_SC)}catch(e){}}
+function watchGuide(replace){const st=(n,t,d,shot)=>`<div class="step"><b>${n}</b><div><div style="font-weight:700">${t}</div><div class="small muted">${d}</div>${shot||''}</div></div>`,on=watchOn();
+  const html=`<h2>Start workouts on Apple Watch</h2><p>When you start a workout in Apex, your watch starts a strength workout too, so heart rate and calories are recorded in Apple Health. It runs through a shortcut you make once in Apple's Shortcuts app.</p><div class="stack">
+  ${st(1,'Open the Shortcuts app and tap +','This starts a new, empty shortcut.','<a class="btn sm" style="margin-top:8px" href="shortcuts://">Open Shortcuts</a>')}
+  ${st(2,'Add the "Start Workout" action','Type Start Workout into the search box and tap it.','<div class="shot"><span class="fakebtn">Start Workout</span></div>')}
+  ${st(3,'Pick the workout type','Tap the blue workout name and choose Traditional Strength Training. Leave the goal as Open.','')}
+  ${st(4,'Name it exactly "'+WATCH_SC+'"','Tap the name at the top, choose Rename, type it with the same capitals and space, then tap Done.','<div class="shot"><div class="bar">'+WATCH_SC+'</div></div>')}
+  ${st(5,'Come back here and tap Test','Your watch should start a workout within a few seconds. The phone switches to Shortcuts for a moment, so switch back to Apex afterwards. End the test workout on your watch.','')}
+  </div><div class="row" style="margin-top:16px"><button class="btn" style="flex:1" data-a="watch-test">Test</button><button class="btn" style="flex:1" data-a="watch-toggle">${on?'Turn off':'Turn on'}</button></div>
+  <p class="small muted" style="margin-top:12px">${on?'On for this phone. ':''}Apex cannot end the watch workout, so end it on your watch when you finish. This setting stays on this phone only.</p>`;
+  if(replace)openSheet(html,'guide');else pushSheet(html,'guide')}
 const APP_URL='https://mevolutionary.github.io/apex/';
 function installGuide(){const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),and=/Android/.test(navigator.userAgent);
   const st=(n,t,d,shot)=>`<div class="step"><b>${n}</b><div><div style="font-weight:700">${t}</div><div class="small muted">${d}</div>${shot?`<div class="shot">${shot}</div>`:''}</div></div>`;
@@ -709,6 +721,7 @@ function settingsSheet(){
     general:`<div class="row between"><span>Weight units</span>${seg('unit',[['kg','kg'],['lb','lb']])}</div>
       <div class="row between"><span>Rank standards</span>${seg('sex',[['male','Male'],['female','Female']])}</div>
       <div><div style="margin-bottom:8px">Rest timer between sets</div>${seg('rest',[[0,'Off'],[60,'60s'],[90,'90s'],[120,'120s'],[180,'180s']]).replace('class="seg"','class="seg" style="justify-content:space-between"')}</div>
+      <div class="tile small row between"><span>Start workouts on Apple Watch<br><span class="muted">${watchOn()?'On for this phone':'Off'}</span></span><button class="btn sm" data-a="watch-guide">${watchOn()?'Options':'Set up'}</button></div>
       <div class="tile small row between"><span>${isApp()?'On your Home Screen':'Add Apex to your Home Screen'}</span><button class="btn sm" data-a="install-guide">${isApp()?'Share':'Show me how'}</button></div>
       <div class="tile small row between"><span>Apex ${VERSION}</span><button class="btn sm" data-a="check-update">Check for updates</button></div>
       <p class="small muted" style="margin:0;font-size:11px">Screen ${innerWidth}×${innerHeight} of ${screen.width}×${screen.height} · fill ${window.vgap||0} · app ${(matchMedia('(display-mode:standalone)').matches||navigator.standalone)?'yes':'no'}</p>`,
@@ -736,7 +749,7 @@ function platesSheet(v,bar){const lb=unit()==='lb',sizes=lb?[45,35,25,10,5,2.5]:
   </div>`)}
 
 /* ================= workout actions ================= */
-function startWorkout(exIds,name){const h=new Date().getHours();S.active={id:uidGen(),name:name||(h<12?'Morning':h<17?'Afternoon':'Evening')+' workout',start:Date.now(),exercises:[]};(exIds||[]).forEach(addExercise);save('active');go('train')}
+function startWorkout(exIds,name){const h=new Date().getHours();S.active={id:uidGen(),name:name||(h<12?'Morning':h<17?'Afternoon':'Evening')+' workout',start:Date.now(),exercises:[]};(exIds||[]).forEach(addExercise);save('active');go('train');if(watchOn())watchFire()}
 function addExercise(id){const prev=prevSets(id);S.active.exercises.push({exId:id,sets:(prev&&prev.length?prev:[{},{},{}]).map(p=>({w:p.w??null,r:p.r??null,done:false}))})}
 function finish(){const a=S.active;const exs=a.exercises.map(e=>({exId:e.exId,sets:e.sets.filter(s=>s.done&&s.r>0).map(s=>({w:s.w||0,r:s.r}))})).filter(e=>e.sets.length);
   if(!exs.length){toast('Tick at least one set with reps before finishing.');return}
@@ -744,7 +757,7 @@ function finish(){const a=S.active;const exs=a.exercises.map(e=>({exId:e.exId,se
   const tiers=()=>isEmpty()?{}:Object.fromEntries(Object.keys(STD).map(k=>[k,(rankFor(k)||{}).tier])),before=tiers();
   const w={id:a.id,name:a.name.trim()||'Workout',start:a.start,end:Date.now(),exercises:exs};S.workouts.push(w);S.active=null;stopRest();recomputePRs(S.workouts);
   const after=tiers(),up=Object.keys(after).filter(k=>after[k]!=null&&(before[k]==null?after[k]>0:after[k]>before[k])).map(k=>({id:k,from:before[k]??null,to:after[k]}));if(up.length)w.up=up;
-  save(monthKey(w.start),'active');go('history');expanded=w.id;render();summarySheet(w.id,true)}
+  save(monthKey(w.start),'active');go('history');expanded=w.id;render();summarySheet(w.id,true);if(watchOn())setTimeout(()=>toast('End the workout on your Apple Watch too.'),1400)}
 function startRest(){const n=S.settings.rest;if(!n)return;rest={end:Date.now()+n*1000,total:n};tick()}
 function stopRest(){rest=null;$('#rest').classList.remove('on')}
 let actx=null;function beep(){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.35)}catch(e){}}
@@ -865,6 +878,9 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'launcher':launcherOpen();break;
   case 'check-update':checkUpdate(true);break;
   case 'install-guide':installGuide();break;
+  case 'watch-guide':watchGuide();break;
+  case 'watch-test':watchFire();break;
+  case 'watch-toggle':try{localStorage.setItem('apex.watch',watchOn()?'0':'1')}catch(e){}toast(watchOn()?'Apple Watch start is on.':'Apple Watch start is off.');closeSheet();break;
   case 'app-copy':navigator.clipboard.writeText(APP_URL).then(()=>toast('Link copied.')).catch(()=>toast('Could not copy. The link is '+APP_URL));break;
   case 'app-share':if(navigator.share)navigator.share({title:'Apex',url:APP_URL}).catch(()=>{});else navigator.clipboard.writeText(APP_URL).then(()=>toast('Link copied.')).catch(()=>toast('The link is '+APP_URL));break;
   case 'apply-update':applyUpdate();break;
