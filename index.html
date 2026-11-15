@@ -131,7 +131,7 @@ input[type=password]{width:100%;height:46px;padding:0 14px;border-radius:14px;ba
 .seg button.on{background:rgba(255,255,255,.2);color:var(--ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
 .chip{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);white-space:nowrap}
 .chip.on{background:#fff;color:#0b0d18}
-.pr{display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.4px;background:var(--gold);color:#3a2a00}
+.pr{white-space:nowrap;flex:none;display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.4px;background:var(--gold);color:#3a2a00}
 input[type=text],input[type=number],input[type=date],select{width:100%;min-height:46px;padding:0 14px;border-radius:14px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.14);font-size:16px}
 input::placeholder{color:var(--ink-3)}
 label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-2);min-width:0}
@@ -264,7 +264,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.27';
+const LB=2.20462, DAY=864e5, VERSION='0.28';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -494,12 +494,18 @@ function home(){const d=V(),ws=weekStart(),wk=d.workouts.filter(w=>w.start>=ws),
   <section class="glass card"><h2>Sets per muscle this week</h2>${mlist.length?`<div class="bars">${mlist.map(([m,n])=>`<div class="barrow"><span>${m}</span><div class="track"><i style="width:${n/mmax*100}%"></i></div><span class="num" style="text-align:right">${n}</span></div>`).join('')}</div>`:'<div class="muted small">No sets logged yet this week.</div>'}</section>
   <section class="glass card"><h2>Recent records</h2>${prs.length?`<div class="list">${prs.map(p=>`<div class="row between tap" data-a="ex" data-v="${esc(p.exId)}"><div><div style="font-weight:600">${esc(exById(p.exId).name)}</div><div class="small muted">${p.type} · ${niceDate(p.at)}</div></div><div class="row"><span class="num" style="font-weight:800">${disp(p.kg)} ${unit()}</span><span class="pr">PR</span></div></div>`).join('')}</div>`:'<div class="muted small">Records appear here when you beat a previous best.</div>'}</section>`}
 
+/* A routine opened from the Train tab: everything in it, what you did last time, and the choice to start. */
+function routineSheet(id){const r=S.routines.find(x=>x.id===id);if(!r)return;
+  openSheet(`<h2 style="margin-bottom:2px">${esc(r.name)}</h2><p class="small">${r.exIds.length} exercise${r.exIds.length===1?'':'s'}</p><div class="stack"><div class="list">${r.exIds.map(x=>{const ex=exById(x),prev=prevSets(x);return `<div class="tap" data-a="ex" data-v="${esc(x)}"><div class="row between"><span style="font-weight:600">${esc(ex.name)}</span><span class="small muted">${ex.muscle}</span></div><div class="small muted num">${prev?'Last time: '+prev.map(s=>disp(s.w||0)+' × '+s.r).join('   ·   '):'Not logged yet'}</div></div>`}).join('')}</div>
+  <div class="row"><button class="btn danger" style="flex:1" data-a="del-routine" data-v="${r.id}">Delete</button><button class="btn primary" style="flex:2" data-a="start-routine" data-v="${r.id}">Start workout</button></div></div>`,'routine')}
 function prevSets(exId){const l=S.workouts;for(let i=l.length-1;i>=0;i--){const e=l[i].exercises.find(x=>x.exId===exId);if(e)return e.sets}return null}
 function train(){const a=S.active;if(!a){const last=S.workouts[S.workouts.length-1];
   return `<div class="top"><h1>Train</h1><button class="btn sm" data-a="plates">Plate calculator</button></div>${demoBanner()}
   <button class="btn primary block" data-a="start">Start empty workout</button>
   ${last?`<button class="btn block" data-a="repeat">Repeat ${esc(last.name)} from ${niceDate(last.start)}</button>`:''}
-  <section class="glass card"><h2>Routines</h2>${S.routines.length?`<div class="list">${S.routines.map(r=>`<div class="row between"><div style="min-width:0"><div style="font-weight:600">${esc(r.name)}</div><div class="small muted">${r.exIds.map(x=>esc(exById(x).name)).join(', ')}</div></div><div class="row"><button class="btn sm" data-a="start-routine" data-v="${r.id}">Start</button><button class="btn sm danger" data-a="del-routine" data-v="${r.id}" aria-label="Delete routine">Delete</button></div></div>`).join('')}</div>`:'<div class="muted small">Finish a workout and choose Save as routine to reuse it here.</div>'}</section>`}
+  <section class="glass card"><h2>Routines</h2>${S.routines.length?`<div class="list">${S.routines.map(r=>`<button class="row between" style="width:100%;text-align:left" data-a="routine" data-v="${r.id}"><span style="min-width:0"><span style="font-weight:600;display:block">${esc(r.name)}</span><span class="small muted">${r.exIds.length} exercise${r.exIds.length===1?'':'s'} · ${r.exIds.slice(0,3).map(x=>esc(exById(x).name)).join(', ')}${r.exIds.length>3?' and more':''}</span></span><span class="chip">View</span></button>`).join('')}</div>`:'<div class="muted small">Finish a workout and choose Save as routine to reuse it here.</div>'}</section>
+  ${typeof coachTrain==='function'?coachTrain():''}`}
+
   return `<div class="top"><div style="min-width:0;flex:1"><input type="text" id="wname" data-i="wname" value="${esc(a.name)}" aria-label="Workout name" style="background:none;border:0;padding:0;font-family:var(--display);font-size:28px;font-weight:900;min-height:0"><div class="sub num" id="elapsed"></div></div><button class="btn sm" data-a="plates">Plates</button></div>
   ${a.exercises.map((e,i)=>{const ex=exById(e.exId),prev=prevSets(e.exId),best=bestOf(S.workouts,e.exId);
     return `<section class="glass card ex"><div class="row between"><div><h3>${esc(ex.name)}</h3><div class="small muted">${ex.muscle}${ex.bw?' · bodyweight, enter added weight':''}</div></div><button class="btn sm danger" data-a="rm-ex" data-x="${i}">Remove</button></div>
@@ -815,7 +821,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   if(ev.target.closest('#bw-photo-lbl')&&ev.target.id!=='bw-photo'&&!(parseFloat($('#bw-val').value)>0)){ev.preventDefault();toast('Enter your weight first, then add the photo.');return}if(ev.target.id==='scrim'){dismissSheet();return}if(ev.target.id==='lscrim'){launcherClose();return}if(!b)return;const a=b.dataset.a,v=b.dataset.v,x=+b.dataset.x,s=+b.dataset.s;
   if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
   if((a==='open'||a==='launcher')&&b.closest('#nav')&&Date.now()-lastTabDrag<450)return;
-  haptic();pushMode=(a==='info'||a==='ex'||a==='coach-evidence')&&!!b.closest('#sheet');
+  haptic();pushMode=(a==='info'||a==='ex'||a==='coach-evidence'||a==='coach-why')&&!!b.closest('#sheet');
   switch(a){
   case 'tab':go(v);break;
   case 'open':openItem(v);break;
@@ -857,8 +863,9 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'wipe':confirmSheet('Delete all data?','This removes every workout, weigh-in, progress photo, food log, routine and custom exercise. Export a backup first if you might want it back.','Delete everything',()=>{S.weights.filter(w=>w.p).forEach(w=>phRemove(w.d));S={settings:S.settings,custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};saveAll();go('home');toast('All data deleted.')});break;
   case 'start':startWorkout();break;
   case 'repeat':{const l=S.workouts[S.workouts.length-1];startWorkout(l.exercises.map(e=>e.exId),l.name);break}
-  case 'start-routine':{const r=S.routines.find(r=>r.id===v);r&&startWorkout(r.exIds,r.name);break}
-  case 'del-routine':S.routines=S.routines.filter(r=>r.id!==v);save('settings');render();break;
+  case 'routine':routineSheet(v);break;
+  case 'start-routine':{const r=S.routines.find(r=>r.id===v);if(S.active){toast('Finish or discard your current workout first.');break}closeSheet();r&&startWorkout(r.exIds,r.name);break}
+  case 'del-routine':S.routines=S.routines.filter(r=>r.id!==v);save('settings');closeSheet();render();break;
   case 'to-routine':{const w=S.workouts.find(w=>w.id===v);if(w){S.routines.push({id:uidGen(),name:w.name,exIds:w.exercises.map(e=>e.exId)});save('settings');closeSheet();render();toast('Saved as a routine on the Train tab.')}break}
   case 'pick':pickQuery='';pickFilter='All';pickSheet();break;
   case 'pick-filter':pickFilter=v;pickSheet();break;
@@ -891,7 +898,7 @@ document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof
   else if(i==='wname'){S.active.name=t.value;save('active')}
   else if(i==='pickq'){pickQuery=t.value;const q=pickQuery.trim().toLowerCase();$('#pick-list').innerHTML=pickRows(allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q))))}
   else if(i==='plates'){const v=parseFloat($('#pl-v').value)||0,b=parseFloat($('#pl-b').value)||0,id=t.id,pos=t.selectionStart;platesSheet(v,b);const el=$('#'+id);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}});
-document.addEventListener('change',ev=>{const t=ev.target;if(typeof nutChange==='function'&&nutChange(t))return;
+document.addEventListener('change',ev=>{const t=ev.target;if(typeof nutChange==='function'&&nutChange(t))return;if(typeof coachChange==='function'&&coachChange(t))return;
   if(t.id==='bw-photo'){const f=t.files&&t.files[0],val=parseFloat($('#bw-val').value),d=$('#bw-date').value||ymd(Date.now());if(!f)return;if(!(val>0)){toast('Enter your weight first, then add the photo.');return}
     toast('Saving photo…');phSave(d,f).then(()=>{saveWeigh(val,d,true);toast('Weigh-in and photo saved.')}).catch(()=>{saveWeigh(val,d,false);toast('Weigh-in saved, but the photo could not be read.')});return}
   if(t.id!=='imp-json'&&t.id!=='imp-hevy')return;const f=t.files&&t.files[0];if(!f)return;const r=new FileReader();r.onload=()=>t.id==='imp-json'?restore(String(r.result)):importHevy(String(r.result));r.onerror=()=>toast('Could not read that file.');r.readAsText(f)});

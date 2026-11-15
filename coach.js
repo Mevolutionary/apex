@@ -18,7 +18,7 @@ const SECONDARY={bench:{Triceps:.5,Shoulders:.5},incbench:{Triceps:.5,Shoulders:
 const POOL={Chest:['bench','incdb','fly','dbbench','pecdeck','dip'],Back:['pullup','row','latpd','cablerow','dbrow','dead'],Shoulders:['ohp','latraise','dbohp','reardelt','facepull'],Biceps:['curl','hammer','dbcurl','preacher'],Triceps:['pushdown','skull','ohext'],
   Quads:['squat','legpress','legext','bss','hack'],Hamstrings:['rdl','legcurl'],Glutes:['hipthrust','bss'],Calves:['calf','seatcalf'],Core:['cablecrunch','legraise']};
 const COMPOUND=new Set(['bench','incbench','dbbench','incdb','dip','dead','row','pullup','chinup','latpd','cablerow','dbrow','tbar','ohp','dbohp','cgbench','squat','fsquat','legpress','bss','hack','lunge','rdl','hipthrust']);
-const SPLITS={2:['Full body A','Full body B'],3:['Full body A','Full body B','Full body C'],4:['Upper A','Lower A','Upper B','Lower B'],5:['Push','Pull','Legs','Upper','Lower'],6:['Push A','Pull A','Legs A','Push B','Pull B','Legs B']};
+const SPLITS={2:['Full body A','Full body B'],3:['Full body A','Full body B','Full body C'],4:['Upper A','Lower A','Upper B','Lower B'],5:['Upper','Lower','Push','Pull','Legs'],6:['Push A','Pull A','Legs A','Push B','Pull B','Legs B']};
 const DAYMUS=n=>/^Full/.test(n)?CMUS:/^Upper/.test(n)?['Chest','Back','Shoulders','Biceps','Triceps']:/^Lower|^Legs/.test(n)?['Quads','Hamstrings','Glutes','Calves','Core']:/^Push/.test(n)?['Chest','Shoulders','Triceps']:['Back','Biceps'];
 const SETCAP={45:14,60:18,75:22,90:26};
 const coachCfg=()=>Object.assign({focus:'balanced',days:4,mins:60},S.settings.coach||{});
@@ -43,7 +43,7 @@ const DROP_ORDER=['Core','Calves','Biceps','Triceps','Glutes','Shoulders','Hamst
 const slotOf=id=>id==='dead'?'Hamstrings':exById(id).muscle;   /* deadlifts are scheduled with the lower-body work */
 function coachPlan(){const c=coachCfg(),{t,pri,lagM,lag}=coachTargets(),names=SPLITS[c.days]||SPLITS[4],used={};for(const w of S.workouts)for(const e of w.exercises)used[e.exId]=(used[e.exId]||0)+1;
   const dayCount={};for(const n of names)for(const m of DAYMUS(n))dayCount[m]=(dayCount[m]||0)+1;const seen={},cap=SETCAP[c.mins]||18;
-  return names.map(name=>{let items=[];for(const m of DAYMUS(name)){const keep=pri.has(m)||lagM.has(m)||lag.some(l=>slotOf(l.id)===m),direct=t[m]*(['Biceps','Triceps','Shoulders','Glutes','Hamstrings'].includes(m)?.75:1);
+  const built=names.map(name=>{let items=[];for(const m of DAYMUS(name)){const keep=pri.has(m)||lagM.has(m)||lag.some(l=>slotOf(l.id)===m),direct=t[m]*(['Biceps','Triceps','Shoulders','Glutes','Hamstrings'].includes(m)?.75:1);
       let sets=Math.max(3,Math.min(9,Math.round(direct/dayCount[m])));const k=seen[m]=(seen[m]||0)+1,lagEx=lag.map(l=>l.id).filter(id=>slotOf(id)===m);
       let pool=POOL[m].filter(id=>slotOf(id)===m).sort((a,b)=>(used[b]||0)-(used[a]||0));if(pool.length>2&&k%2===0)pool=[pool[1],pool[0]].concat(pool.slice(2));   /* vary the lead exercise between A and B days */
       pool=lagEx.concat(pool.filter(x=>!lagEx.includes(x)));const nEx=sets<=4?1:sets<=8?2:3;
@@ -55,7 +55,10 @@ function coachPlan(){const c=coachCfg(),{t,pri,lagM,lag}=coachTargets(),names=SP
       const m=DROP_ORDER.find(mm=>items.some(x=>x.m===mm&&!x.keep));if(m&&items.length>3){cut=items.filter(x=>x.m===m&&!x.keep).pop();items.splice(items.indexOf(cut),1);continue}   /* 3: drop the least important muscle */
       cut=items.filter(x=>x.second).pop();if(cut){items.splice(items.indexOf(cut),1);continue}const big=items.filter(x=>x.sets>3)[0];if(big){big.sets--;continue}break}
     items.sort((a,b)=>(COMPOUND.has(b.id)?1:0)-(COMPOUND.has(a.id)?1:0));
-    return{name,items,sets:total(),mins:Math.round(items.reduce((a,x)=>a+x.sets*(COMPOUND.has(x.id)?3:2),0)+5)}})}
+    return{name,items,sets:total(),mins:Math.round(items.reduce((a,x)=>a+x.sets*(COMPOUND.has(x.id)?3:2),0)+5)}});
+  return coachOrder(c).map(i=>built[i])}
+/* The order of sessions in the week is the person's choice; it defaults to the split's usual order. */
+function coachOrder(c){const n=(SPLITS[c.days]||SPLITS[4]).length,o=(c.order||{})[c.days];return Array.isArray(o)&&o.length===n&&o.slice().sort().join()===[...Array(n).keys()].join()?o:[...Array(n).keys()]}
 function nextDay(plan){const done=S.workouts.filter(w=>w.start>=weekStart()).length;return plan.length?done%plan.length:0}
 
 /* ================= screens ================= */
@@ -91,17 +94,29 @@ function coachEvidence(){openSheet(`<h2>The evidence behind the plan</h2><p>The 
   <div class="tile small"><strong>How often matters less than how much.</strong><br>Schoenfeld, Ogborn and Krieger (2016) found training a muscle twice a week beat once a week. The 2026 analysis found that once total weekly sets are accounted for, frequency adds little. So the Coach picks a split that fits your days and spreads each muscle's sets across them, without insisting on a fixed frequency.<br><span class="muted">How far to trust it: the two analyses differ, and the newer, larger one is the more cautious. Treat frequency as a matter of convenience.</span><br><a class="info" href="${pm('Schoenfeld Ogborn Krieger resistance training frequency muscle hypertrophy meta-analysis')}" target="_blank" rel="noopener">Find it on PubMed</a></div>
   <div class="tile small"><strong>What is not from a study.</strong><br>The goal presets (4 extra sets for priority muscles), the 6-set targets for calves and core, the rep ranges, the choice of exercises and the rule for adding weight are ordinary coaching conventions chosen for this app. They are reasonable defaults, not research findings.</div>
   <div class="small muted">This is general training guidance, not medical advice. Ease into new volume over a few weeks rather than jumping to the targets.</div></div>`,'coach-ev')}
-function coachEdit(){const c=coachCfg(),opt=(v,l,cur)=>`<option value="${v}" ${String(cur)===String(v)?'selected':''}>${l}</option>`;
+let coDraft=null;
+function coachEdit(keep){if(!keep||!coDraft){const c=coachCfg();coDraft={focus:c.focus,days:c.days,mins:c.mins,order:Object.assign({},c.order||{})}}const c=coDraft,opt=(v,l,cur)=>`<option value="${v}" ${String(cur)===String(v)?'selected':''}>${l}</option>`,names=SPLITS[c.days],ord=coachOrder(c);
   openSheet(`<h2>Goal and schedule</h2><p>The Coach rebuilds the plan from these and from what you have logged.</p><div class="stack">
   <label class="f">What are you training for?<select id="co-focus">${Object.keys(FOCUS).map(k=>opt(k,FOCUS[k][0],c.focus)).join('')}</select></label>
   <div class="row"><label class="f" style="flex:1">Days a week<select id="co-days">${[2,3,4,5,6].map(d=>opt(d,d+' days',c.days)).join('')}</select></label><label class="f" style="flex:1">Session length<select id="co-mins">${[45,60,75,90].map(d=>opt(d,d+' minutes',c.mins)).join('')}</select></label></div>
+  <div><div style="font-weight:700;margin-bottom:4px">Order of sessions</div><div class="small muted" style="margin-bottom:8px">Put them in the order you like to train. The order does not change results, so pick what suits your week.</div><div class="list">${ord.map((ix,pos)=>`<div class="row between"><span><span class="num muted">${pos+1}.</span> ${names[ix]}</span><span class="row" style="gap:6px"><button class="btn sm" data-a="co-move" data-v="${pos}.-1" ${pos===0?'disabled style="opacity:.3"':''} aria-label="Move ${names[ix]} earlier">Earlier</button><button class="btn sm" data-a="co-move" data-v="${pos}.1" ${pos===ord.length-1?'disabled style="opacity:.3"':''} aria-label="Move ${names[ix]} later">Later</button></span></div>`).join('')}</div></div>
   <button class="btn primary block" data-a="coach-apply">Build my plan</button></div>`,'coach-edit')}
+function coachChange(t){if(!coDraft||!['co-focus','co-days','co-mins'].includes(t.id))return false;coDraft.focus=$('#co-focus').value;coDraft.mins=+$('#co-mins').value;const d=+$('#co-days').value;if(d!==coDraft.days){coDraft.days=d;coachEdit(true)}return true}
+/* One Coach session in full, opened from the Coach screen or the Train tab. */
+function coachDaySheet(i){const plan=coachPlan(),d=plan[i];if(!d)return;
+  openSheet(`<h2 style="margin-bottom:2px">${d.name}</h2><p class="small">${d.sets} sets · about ${d.mins} minutes · built by the Coach</p><div class="stack"><div class="list">${d.items.map((x,j)=>`<button class="crow" data-a="coach-why" data-v="${i}.${j}"><span style="min-width:0"><span style="font-weight:600">${esc(exById(x.id).name)}</span><span class="small muted" style="display:block">${suggestLoad(x.id,x.lo,x.hi)}</span></span><span class="num" style="font-weight:800;white-space:nowrap">${x.sets} × ${x.lo}–${x.hi}</span></button>`).join('')}</div>
+  <div class="small muted">Tap an exercise to see why it is there. This session is rebuilt as your training and goal change.</div><button class="btn primary block" data-a="coach-start" data-v="${i}">Start ${d.name}</button></div>`,'coach-day')}
+function coachTrain(){const plan=coachPlan(),nx=nextDay(plan),c=coachCfg();
+  return `<section class="glass card"><h2>Smart sessions<button class="info" data-a="tab" data-v="coach">Open the Coach</button></h2><div class="small muted" style="margin-top:-4px">Built by the Coach for your goal, "${FOCUS[c.focus][0]}". Unlike your routines above, these change as you train: they shift sets toward what you are not hitting and suggest today's weights from your last session.</div>
+  <div class="list" style="margin-top:12px">${plan.map((d,i)=>`<button class="row between" style="width:100%;text-align:left" data-a="coach-day" data-v="${i}"><span style="min-width:0"><span style="font-weight:600;display:block">${d.name}</span><span class="small muted">${d.sets} sets · about ${d.mins} min · ${d.items.slice(0,2).map(x=>esc(exById(x.id).name)).join(', ')}${d.items.length>2?' and more':''}</span></span>${i===nx?'<span class="pr">Up next</span>':'<span class="chip">View</span>'}</button>`).join('')}</div></section>`}
 function coachAction(a,v){switch(a){
   case 'coach-edit':coachEdit();break;
-  case 'coach-apply':S.settings.coach={focus:$('#co-focus').value,days:+$('#co-days').value,mins:+$('#co-mins').value};save('settings');closeSheet();render();toast('Plan rebuilt.');break;
+  case 'co-move':{const [pos,dir]=v.split('.').map(Number),o=coachOrder(coDraft).slice(),to=pos+dir;if(to<0||to>=o.length)break;[o[pos],o[to]]=[o[to],o[pos]];coDraft.order[coDraft.days]=o;coDraft.focus=$('#co-focus').value;coDraft.mins=+$('#co-mins').value;coachEdit(true);break}
+  case 'coach-apply':S.settings.coach={focus:$('#co-focus').value,days:+$('#co-days').value,mins:+$('#co-mins').value,order:coDraft?coDraft.order:{}};coDraft=null;save('settings');closeSheet();render();toast('Plan rebuilt.');break;
+  case 'coach-day':coachDaySheet(+v);break;
   case 'coach-evidence':coachEvidence();break;
   case 'coach-why':coachWhy(v);break;
-  case 'coach-start':{const d=coachPlan()[+v];if(!d)break;if(S.active){toast('Finish or discard your current workout first.');break}startWorkout(d.items.map(x=>x.id),d.name);
+  case 'coach-start':{const d=coachPlan()[+v];if(!d)break;if(S.active){toast('Finish or discard your current workout first.');break}closeSheet();startWorkout(d.items.map(x=>x.id),d.name);
     d.items.forEach((x,i)=>{const e=S.active.exercises[i];if(!e)return;while(e.sets.length<x.sets)e.sets.push({w:(e.sets[e.sets.length-1]||{}).w??null,r:null,done:false});e.sets.length=x.sets});save('active');render();break}
   case 'coach-save':{const plan=coachPlan();S.routines=S.routines.filter(r=>!r.coach);plan.forEach(d=>S.routines.push({id:uidGen(),name:d.name,exIds:d.items.map(x=>x.id),coach:1}));save('settings');toast('Saved. Find them under Routines on the Train tab.');break}
   }}
