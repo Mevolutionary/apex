@@ -9,7 +9,7 @@
 .lvl{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:999px;font-size:12px;font-weight:700;border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.08)}
 .lvl i{width:8px;height:8px;border-radius:50%;background:var(--ink-3)}
 .lvl.l1 i{background:var(--good)}.lvl.l2 i{background:#7fb4ff}.lvl.l3 i{background:var(--gold)}.lvl.l4 i{background:#ff8a7a}
-.verdict{padding:14px 16px;border-radius:18px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22)}
+.verdict{padding:14px 16px;border-radius:var(--ir);border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.22)}
 .verdict .v{font-family:var(--display);font-weight:900;font-size:20px}
 .verdict.strong .v{color:var(--good)}.verdict.moderate .v{color:#7fb4ff}.verdict.weak .v{color:var(--gold)}.verdict.unclear .v{color:var(--ink-2)}
 .stlist{margin:6px 0 0;padding-left:18px}.stlist li{margin:4px 0}
@@ -78,7 +78,7 @@ function studies(){const d=stStore(),saved=Object.values(d.saved).sort((a,b)=>(b
   <div class="row" style="gap:8px"><input type="text" inputmode="search" autocapitalize="off" autocomplete="off" id="st-q" placeholder="Search any topic, for example creatine" value="${esc(stQ)}" style="flex:1;min-width:0" enterkeyhint="search"><button class="btn sm" data-a="st-search">Search</button></div>
   <div class="row between" style="gap:10px"><div class="seg" style="flex:none"><button data-a="st-strong" data-v="1" class="${stStrong?'on':''}" style="white-space:nowrap">Reviews and trials</button><button data-a="st-strong" data-v="0" class="${stStrong?'':'on'}">All</button></div><span class="small muted" style="text-align:right">${f&&f.state==='ok'?(f.total||f.list.length).toLocaleString()+' found':''}<br>Newest first</span></div>`;
   let body='';
-  if(!f||(f.state==='loading'&&!f.list.length))body=`<section class="glass card" style="text-align:center"><div class="spin"></div><p class="muted" style="margin:14px 0 0">Loading the latest studies…</p></section>`;
+  if(!f||(f.state==='loading'&&!f.list.length))body=(typeof skelRows==='function'?skelRows(4):'')+`<p class="small muted" style="text-align:center;margin:0">Loading the latest studies…</p>`;
   else if(f.state==='error')body=`<section class="glass card"><h2>Could not load studies</h2><p style="margin:0 0 12px">The research database did not respond. Nothing is wrong with your data. Check your connection and try again.</p><button class="btn block" data-a="st-retry">Try again</button><div class="small muted" style="margin-top:10px;overflow-wrap:anywhere">Details: ${esc(f.err)}</div></section>`;
   else if(!f.list.length)body=`<section class="glass card"><h2>No studies found</h2><p class="muted" style="margin:0">Try different words, or switch the filter to All.</p></section>`;
   else body=f.list.map(stCard).join('')+(f.done?'':`<button class="btn block" data-a="st-more">${f.state==='loading'?'Loading…':'Load more'}</button>`)+`<p class="small muted" style="text-align:center;margin:0">Study listings come from Europe PMC.</p>`;

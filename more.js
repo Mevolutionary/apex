@@ -2,8 +2,8 @@
    time estimates and short technique cues. Loaded last; hooks are small typeof-guarded calls in index.html. */
 
 (function(){const st=document.createElement('style');st.textContent=`
-.icgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.icopt{aspect-ratio:1;border-radius:22%;overflow:hidden;border:3px solid transparent;padding:0}.icopt img{width:100%;height:100%;display:block}.icopt.on{border-color:#fff}
-.swatch{width:38px;height:38px;border-radius:50%;border:3px solid transparent;flex:none}.swatch.on{border-color:#fff}
+.icgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.icopt{aspect-ratio:1;border-radius:22%;overflow:hidden;border:3px solid transparent;padding:0}.icopt img{width:100%;height:100%;display:block}.icopt.on{border-color:rgb(255 255 255 / .9)}
+.swatch{width:44px;height:44px;border-radius:50%;border:3px solid transparent;flex:none}.swatch.on{border-color:rgb(255 255 255 / .9)}
 .dayc{flex:1;min-width:0;padding:8px 0!important;text-align:center}
 `;document.head.appendChild(st)})();
 

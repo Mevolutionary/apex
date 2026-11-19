@@ -3,13 +3,13 @@
    entry in the day's list ({w: millilitres, m: -1}) so it syncs with that day's food and never counts as food. */
 
 (function(){const st=document.createElement('style');st.textContent=`
-.star{flex:none;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;color:var(--ink-3)}
+.star{flex:none;width:44px;height:44px;border-radius:12px;display:grid;place-items:center;color:var(--ink-3)}
 .star svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round}.star.on{color:var(--gold)}.star.on svg{fill:currentColor}
-.wbar{height:10px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:10px}.wbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,#5ac8fa,#7fb4ff);transition:width .5s cubic-bezier(.2,.9,.2,1)}
+.wbar{height:10px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:10px}.wbar i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg in oklch,oklch(78.9% 0.122 230.8),var(--blue));transition:width .5s cubic-bezier(.2,.9,.2,1)}
 .wk{display:flex;align-items:flex-end;gap:8px;height:120px;position:relative;margin-top:8px}
 .wk .d{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px}
-.wk .d i{display:block;width:100%;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,var(--a1,#7b6cff),#5ac8fa);min-height:3px}
-.wk .d.none i{background:rgba(255,255,255,.12)}.wk .d span{font-size:11px;color:var(--ink-3)}
+.wk .d i{display:block;width:100%;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg in oklch,var(--cool),oklch(78.9% 0.122 230.8));min-height:3px}
+.wk .d.none i{background:rgb(255 255 255 / .12)}.wk .d span{font-size:11px;color:var(--ink-3)}
 .wk .t{position:absolute;left:0;right:0;border-top:2px dashed rgba(255,255,255,.55);pointer-events:none}
 #ai-text{width:100%;min-height:96px;border-radius:14px;padding:12px;font:inherit;color:inherit;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.16);resize:vertical}
 `;document.head.appendChild(st)})();

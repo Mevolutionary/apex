@@ -67,7 +67,7 @@ function targetInfo(){const t=targets(),p=S.settings.nut;if(!t){toast('Set up yo
   <p class="small">These are estimates for general training, not medical advice. Days you log only part of what you ate will skew step 3.</p>`,'info')}
 function goalSheet(){const p=S.settings.nut||{age:'',h:'',act:1,goal:'maintain',rate:.5,pk:1.8},noW=!S.weights.length,opt=(v,l,c)=>`<option value="${v}" ${String(c)===String(v)?'selected':''}>${l}</option>`;
   openSheet(`<h2>Your nutrition targets</h2><p>Used to estimate your daily calories and macros. You can change these at any time.</p><div class="stack">
-  <div class="row"><label class="f" style="flex:1">Age<input type="number" inputmode="numeric" id="ng-age" value="${p.age}"></label><label class="f" style="flex:1">Height (cm)<input type="number" inputmode="decimal" id="ng-h" value="${p.h}"></label>${noW?`<label class="f" style="flex:1">Weight (${unit()})<input type="number" inputmode="decimal" id="ng-w"></label>`:''}</div>
+  <div class="row"><label class="f" style="flex:1">Age<input type="number" inputmode="decimal" id="ng-age" value="${p.age}"></label><label class="f" style="flex:1">Height (cm)<input type="number" inputmode="decimal" id="ng-h" value="${p.h}"></label>${noW?`<label class="f" style="flex:1">Weight (${unit()})<input type="number" inputmode="decimal" id="ng-w"></label>`:''}</div>
   <div class="row between"><span>Sex, for the formula</span><div class="seg"><button data-a="set-sex" data-v="male" class="${S.settings.sex==='male'?'on':''}">Male</button><button data-a="set-sex" data-v="female" class="${S.settings.sex==='female'?'on':''}">Female</button></div></div>
   <label class="f">Day-to-day activity, not counting gym sessions<select id="ng-act">${ACT.map((a,i)=>opt(i,a[0],p.act)).join('')}</select></label>
   <label class="f">Goal<select id="ng-goal">${opt('lose','Lose weight',p.goal)}${opt('maintain','Maintain',p.goal)}${opt('gain','Gain weight',p.goal)}</select></label>
@@ -156,7 +156,7 @@ const resRows=(list,prefix)=>list.map((f,i)=>`<button class="frow" data-a="fd-pi
 let localRes=[];
 async function runSearch(q){const box=$('#fd-res');if(!box)return;q=q.trim();if(q.length<2)return;const ql=q.toLowerCase(),words=ql.split(/\s+/);
   localRes=S.foods.concat(GENERIC).filter(f=>words.every(w=>(f.n+' '+(f.b||'')).toLowerCase().includes(w))).slice(0,8);
-  box.innerHTML=(localRes.length?resRows(localRes,'l'):'')+'<div class="muted small row" id="fd-wait"><span class="spin sm"></span> Searching the product database…</div>';
+  box.innerHTML=(localRes.length?resRows(localRes,'l'):'')+'<div id="fd-wait"><div class="skel" style="padding:12px 0" aria-hidden="true"><i></i><i></i><i></i></div><div class="skel" style="padding:4px 0 12px" aria-hidden="true"><i></i><i></i></div><div class="small muted">Searching the product database…</div></div>';
   let res=null,why='';try{res=await foodSearch(q)}catch(e){why=(e&&e.why)||'unknown error'}
   if(!$('#fd-q')||$('#fd-q').value.trim()!==q)return;searchRes=res||[];
   box.innerHTML=(localRes.length?resRows(localRes,'l'):'')+(res===null?`<div class="tile small"><strong>The product database could not be reached.</strong><br>${localRes.length?'The results above are from your own and built-in foods. ':''}You can try again, scan the barcode, or type the numbers in.<div class="row" style="margin-top:10px"><button class="btn sm" data-a="fd-research">Try again</button><button class="btn sm" data-a="fd-quick">Quick add</button></div><div class="muted" style="margin-top:8px;overflow-wrap:anywhere">Details: ${esc(why)}</div></div>`
@@ -209,7 +209,7 @@ function editSheet(id){const e=dayList(foodDay).find(x=>x.id===id);if(!e)return;
 /* ================= barcode ================= */
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
 async function scanSheet(){openSheet(`<h2>Scan a barcode</h2><div class="stack"><div class="scanbox"><video id="scan-v" playsinline muted autoplay></video><i></i></div><div class="small muted" id="scan-msg">Starting the camera…</div>
-  <div class="row"><input type="text" inputmode="numeric" id="scan-code" placeholder="Or type the barcode number"><button class="btn" data-a="fd-code">Look up</button></div></div>`,'fd-scan');
+  <div class="row"><input type="text" inputmode="decimal" id="scan-code" placeholder="Or type the barcode number"><button class="btn" data-a="fd-code">Look up</button></div></div>`,'fd-scan');
   const msg=t=>{const m=$('#scan-msg');if(m)m.textContent=t};let stream=null,timer=null,reader=null,done=false;
   window.sheetCleanup=scanStop=()=>{done=true;clearInterval(timer);try{reader&&reader.reset()}catch(e){}try{stream&&stream.getTracks().forEach(t=>t.stop())}catch(e){}};
   const found=code=>{if(done)return;done=true;lookupCode(code)};

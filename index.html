@@ -20,21 +20,28 @@
 /* Layout idea: one phone-width column of glass panels floating over a slow colour field; a floating glass tab bar; sheets rise from the bottom. Single dark theme by choice. */
 :root{
   color-scheme:dark;
-  --bg:#070913;
-  --ink:#f5f7fc;
-  --ink-2:rgba(245,247,252,.66);
-  --ink-3:rgba(245,247,252,.42);
-  --glass:rgba(255,255,255,.075);
-  --glass-strong:rgba(255,255,255,.13);
-  --edge:rgba(255,255,255,.2);
-  --warm:#ff7a59;
-  --cool:#7b6cff;
-  --good:#5fe3a1;
-  --gold:#ffd166;
-  --bad:#ff6b6b;
+  --bg:oklch(14.3% 0.022 273.5);
+  --ink:oklch(97.6% 0.007 268.5);
+  /* secondary text is set so it stays above 4.5:1 on the brightest part of the colour field behind a card */
+  --ink-2:oklch(97.6% 0.007 268.5 / .8);
+  --ink-3:oklch(97.6% 0.007 268.5 / .72);
+  --glass:rgb(255 255 255 / .075);
+  --glass-strong:rgb(255 255 255 / .13);
+  --edge:rgb(255 255 255 / .2);
+  --warm:oklch(72.9% 0.170 35.1);
+  --cool:oklch(62.3% 0.210 283);
+  --good:oklch(82.5% 0.150 158.6);
+  --gold:oklch(88% 0.135 86.1);
+  --bad:oklch(71.2% 0.181 22.8);
+  --blue:oklch(76.3% 0.122 257.1);
+  /* glass panels sit on a dark tint so text on them stays readable over the bright parts of the field */
+  --tint:rgb(10 12 28 / .48);
+  /* nested corners: inner radius = outer radius - padding (cards 30 - 18 = 12, sheets 36 - 18 = 18) */
+  --ir:18px;
   --display:ui-rounded,"SF Pro Rounded","Nunito",system-ui,sans-serif;
   --body:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",Roboto,sans-serif;
-  --r:26px;
+  --r:30px;
+  interpolate-size:allow-keywords;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 :root{--sab:min(env(safe-area-inset-bottom,0px),34px)}html,body{height:100%;margin:0}html{height:calc(100% + var(--vgap,0px))}body{position:relative}
@@ -44,6 +51,9 @@ button,input,select{font:inherit;color:inherit}
 button{cursor:pointer;border:0;background:none;padding:0}
 :focus-visible{outline:2px solid #fff;outline-offset:2px}
 h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance}
+p{text-wrap:pretty}
+body{font-variant-numeric:tabular-nums}
+.theme-switching *,.theme-switching *::before,.theme-switching *::after{transition:none!important}
 .num{font-family:var(--display);font-variant-numeric:tabular-nums}
 
 /* colour field */
@@ -66,7 +76,7 @@ body.still .field i,body:has(#scrim.on) .field i,body:has(#lock.on) .field i{ani
 @keyframes out{to{opacity:0;transform:scale(.94)}}
 @keyframes outL{to{opacity:0;transform:translateX(-70px) scale(.96)}}
 @keyframes outR{to{opacity:0;transform:translateX(70px) scale(.96)}}
-.ghost{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;animation:out .26s cubic-bezier(.4,0,1,1) both}
+.ghost{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;animation:out .26s cubic-bezier(.23,1,.32,1) both}
 .ghost.r{animation-name:outL}.ghost.l{animation-name:outR}
 main.enter>*{animation:in .8s .15s cubic-bezier(.2,1.22,.32,1) both}
 @keyframes ringin{from{stroke-dasharray:0 290}}
@@ -82,7 +92,7 @@ main.enter .track i{animation:grow 1.15s .3s cubic-bezier(.16,1,.3,1) both;trans
 .check.pop{animation:pop .42s cubic-bezier(.3,1.4,.5,1)}
 #scrim.opening{animation:fade .32s}
 #scrim.closing{opacity:0;transition:opacity .28s}
-#scrim.closing #sheet{transform:translateY(90px) scale(.9)!important;opacity:0;transition:transform .28s cubic-bezier(.4,0,1,1),opacity .24s!important}
+#scrim.closing #sheet{transform:translateY(90px) scale(.9)!important;opacity:0;transition:transform .28s cubic-bezier(.32,.72,0,1),opacity .24s cubic-bezier(.23,1,.32,1)!important}
 @media (prefers-reduced-motion:reduce){.ghost,.field i,main.enter>*,main.enter .track i,.check.pop,#scrim.on,#sheet{animation:none!important}*{transition:none!important}}
 
 /* display and accessibility switches (Settings, General). Stored per device. */
@@ -99,28 +109,29 @@ html.nohap .hx{display:none!important}
 
 /* shell */
 #app{position:relative;z-index:1;height:100%;max-width:540px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden}
-main{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 26px) 18px calc(var(--sab) + 132px);display:flex;flex-direction:column;gap:16px}
+main{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 26px) max(18px,env(safe-area-inset-right)) calc(var(--sab) + 132px) max(18px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:16px}
 .top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 6px 4px}
 .top h1{font-size:32px;font-weight:900;letter-spacing:-.4px;line-height:1.1}
 .top .sub{color:var(--ink-2);font-size:14px;margin-bottom:2px}
 
 /* glass */
-.glass{position:relative;background:linear-gradient(160deg,var(--glass-strong),var(--glass) 45%,rgba(255,255,255,.04));
+.glass{position:relative;background:linear-gradient(160deg,var(--glass-strong),var(--glass) 45%,rgb(255 255 255 / .04)),var(--tint);
   border:1px solid var(--edge);border-radius:var(--r);
   box-shadow:inset 0 1px 0 rgba(255,255,255,.38),inset 0 -1px 0 rgba(255,255,255,.06),inset 0 0 22px rgba(255,255,255,.04),0 14px 34px rgba(0,0,0,.32)}
-.card{padding:20px}
+.card{padding:18px;--ir:12px}
 .card h2{font-size:17px;font-weight:800;display:flex;align-items:center;gap:8px;justify-content:space-between}
 .card h2+*{margin-top:14px}
 .muted{color:var(--ink-2)}.small{font-size:13px}
-.info{color:var(--ink-3);font-size:12px;text-decoration:underline;text-underline-offset:3px;font-family:var(--body);font-weight:400}
+.info{color:var(--ink-3);font-size:12px;text-decoration:underline;text-underline-offset:3px;font-family:var(--body);font-weight:400;padding:14px 6px;margin:-14px -6px}
 .row{display:flex;align-items:center;gap:10px}.between{justify-content:space-between}.wrap{flex-wrap:wrap}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.tile{padding:14px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
+.tile{padding:14px;border-radius:var(--ir);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1)}
 .tile b{display:block;font-family:var(--display);font-size:22px;line-height:1.2;margin-bottom:2px;font-weight:900;font-variant-numeric:tabular-nums}
 .tile span{font-size:12px;color:var(--ink-2)}
 
 #nav,#rest,#toast{-webkit-backdrop-filter:blur(22px) saturate(170%);backdrop-filter:blur(22px) saturate(170%)}
-.card{background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.07) 45%,rgba(255,255,255,.035));contain:layout paint}
+.card{background:linear-gradient(160deg,rgb(255 255 255 / .12),rgb(255 255 255 / .06) 45%,rgb(255 255 255 / .03)),var(--tint);contain:layout paint}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){#nav,#rest,#toast,#sheet,#launch{background:oklch(22% 0.03 275)!important}}
 .tap{cursor:pointer}
 .setbar{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:4px;border-radius:20px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1);margin-bottom:16px}
 .setbar button{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px 6px;border-radius:16px;font-size:10.5px;font-weight:600;color:var(--ink-2);transition:background .25s,color .25s}
@@ -128,8 +139,8 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-
 .setbar button.on{background:rgba(255,255,255,.18);color:var(--ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
 .phstrip{display:flex;gap:10px;overflow-x:auto;touch-action:pan-x;padding-bottom:4px;-webkit-overflow-scrolling:touch}
 .ph{flex:none;width:96px;display:flex;flex-direction:column;gap:6px;align-items:center}
-.ph img{width:96px;height:128px;object-fit:cover;border-radius:16px;background:rgba(255,255,255,.08);display:block}
-.phfull{width:100%;border-radius:20px;display:block;background:rgba(255,255,255,.06);min-height:120px}
+.ph img{width:96px;height:128px;object-fit:cover;border-radius:var(--ir);background:rgba(255,255,255,.08);display:block}
+.phfull{width:100%;border-radius:var(--ir);display:block;background:rgba(255,255,255,.06);min-height:120px}
 .fold{display:grid;grid-template-rows:0fr;opacity:0;transition:grid-template-rows .5s cubic-bezier(.22,1,.32,1),opacity .4s}
 .hist.open .fold{grid-template-rows:1fr;opacity:1}
 .foldin{overflow:hidden;min-height:0}
@@ -137,24 +148,24 @@ main{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-
 .ladder{display:flex;flex-wrap:wrap;gap:8px}
 .ladder span{padding:6px 10px;border-radius:12px;font-size:12px;font-weight:700;border:1px solid rgba(255,255,255,.14);color:var(--ink-3);font-variant-numeric:tabular-nums}
 .ladder span.got{background:rgba(255,255,255,.1)}
-input[type=password]{width:100%;height:46px;padding:0 14px;border-radius:14px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.14);font-size:16px;box-sizing:border-box}
+input[type=password]{width:100%;height:46px;padding:0 14px;border-radius:var(--ir);background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.14);font-size:16px;box-sizing:border-box}
 /* buttons */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 20px;border-radius:999px;font-weight:700;
   background:rgba(255,255,255,.1);border:1px solid var(--edge);box-shadow:inset 0 1px 0 rgba(255,255,255,.3);transition:transform .12s,background .12s}
 .btn{transition:transform .32s cubic-bezier(.3,1.8,.5,1),background .12s}
 .btn:active{transform:scale(.93);transition-duration:.08s}
-.btn.primary{background:linear-gradient(180deg,#fff,#dfe5f5);color:#0b0d18;border-color:#fff;box-shadow:0 8px 24px rgba(255,255,255,.18)}
+.btn.primary{background:linear-gradient(180deg in oklch,#fff,#dfe5f5);color:#0b0d18;border-color:rgb(255 255 255 / .9);box-shadow:0 8px 24px rgba(255,255,255,.18)}
 .btn.danger{color:var(--bad)}
-.btn.sm{min-height:36px;padding:0 14px;font-size:14px;white-space:nowrap}
+.btn.sm{min-height:44px;padding:0 16px;font-size:14px;white-space:nowrap}
 .btn.block{width:100%}
 .iconbtn{width:44px;height:44px;border-radius:50%;display:grid;place-items:center}
 .seg{display:flex;padding:3px;border-radius:999px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1)}
-.seg button{padding:8px 16px;border-radius:999px;font-size:14px;font-weight:600;color:var(--ink-2)}
+.seg button{min-height:44px;padding:0 16px;border-radius:999px;font-size:14px;font-weight:600;color:var(--ink-2)}
 .seg button.on{background:rgba(255,255,255,.2);color:var(--ink);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
-.chip{display:inline-flex;align-items:center;padding:6px 12px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);white-space:nowrap}
+.chip{display:inline-flex;align-items:center;min-height:44px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:600;background:rgb(255 255 255 / .08);background-clip:padding-box;border:7px solid transparent;border-left-width:0;border-right-width:0;box-shadow:inset 0 0 0 1px rgb(255 255 255 / .12);white-space:nowrap}
 .chip.on{background:#fff;color:#0b0d18}
 .pr{white-space:nowrap;flex:none;display:inline-flex;align-items:center;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:800;letter-spacing:.4px;background:var(--gold);color:#3a2a00}
-input[type=text],input[type=number],input[type=date],select{width:100%;min-height:46px;padding:0 14px;border-radius:14px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.14);font-size:16px}
+input[type=text],input[type=number],input[type=date],select{width:100%;min-height:46px;padding:0 14px;border-radius:var(--ir);background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.14);font-size:16px}
 input::placeholder{color:var(--ink-3)}
 label.f{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-2);min-width:0}
 input[type=text],input[type=number],input[type=date],select{height:46px;box-sizing:border-box}
@@ -169,8 +180,8 @@ nav .di svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;
 nav .di{cursor:pointer;position:relative;z-index:1;transition:color .25s,transform .12s}nav .di:active{transform:scale(.92)}
 nav .di.on{color:var(--ink)}
 nav .ind{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/var(--n,5));border-radius:999px;background:rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 14px rgba(0,0,0,.2);transition:transform .58s cubic-bezier(.3,1.3,.45,1),opacity .3s}
-nav .grab{position:absolute;top:-18px;left:50%;transform:translateX(-50%);width:72px;height:18px;flex:none;padding:0;z-index:2}
-nav .grab::after{content:'';position:absolute;left:50%;top:8px;width:36px;height:4px;margin-left:-18px;border-radius:9px;background:rgba(255,255,255,.38)}
+nav .grab{position:absolute;top:-38px;left:50%;transform:translateX(-50%);width:72px;height:44px;flex:none;padding:0;z-index:2}
+nav .grab::after{content:'';position:absolute;left:50%;top:28px;width:36px;height:4px;margin-left:-18px;border-radius:9px;background:rgba(255,255,255,.38)}
 nav .grab:active{transform:translateX(-50%)}
 .lgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0 0}
 #lscrim{position:absolute;inset:0;z-index:7;display:none;opacity:0;background:rgba(3,4,10,.5)}
@@ -187,7 +198,7 @@ html #nav.lghost{z-index:9;pointer-events:none;background:transparent!important;
 .dslot.drag{transition:none;background:rgba(255,255,255,.26);z-index:2;position:relative;box-shadow:0 10px 24px rgba(0,0,0,.4)}
 #linner p{margin:8px 0 0}
 #linner .grabline{width:40px;height:5px;border-radius:9px;background:rgba(255,255,255,.32);margin:0 auto 14px}
-.ltile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px 14px;border-radius:22px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:600;transition:transform .15s,background .3s,border-color .3s}
+.ltile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px 14px;border-radius:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:600;transition:transform .15s,background .3s,border-color .3s}
 .ltile{transition:transform .32s cubic-bezier(.3,1.8,.5,1),background .3s,border-color .3s}
 .ltile:active{transform:scale(.9);transition-duration:.08s}
 .ltile svg{width:26px;height:26px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
@@ -198,21 +209,21 @@ html #nav.lghost{z-index:9;pointer-events:none;background:transparent!important;
 /* rest pill */
 #rest{position:absolute;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 86px);width:min(508px,calc(100% - 32px));padding:10px 12px 10px 18px;border-radius:999px;display:none;align-items:center;gap:10px;overflow:hidden}
 #rest.on{display:flex}
-#rest .bar{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(123,108,255,.45),rgba(255,122,89,.45));z-index:-1;transition:width 1s linear}
+#rest .bar{position:absolute;left:0;top:0;bottom:0;width:100%;transform-origin:left;background:linear-gradient(90deg in oklch,oklch(62.3% 0.21 283 / .45),oklch(72.9% 0.17 35.1 / .45));z-index:-1;transition:transform 1s linear}
 #rest .t{font-family:var(--display);font-weight:900;font-size:22px;font-variant-numeric:tabular-nums;min-width:64px}
 
 /* workout */
 .ex h3{font-size:17px;font-weight:800}
-.sets{display:grid;grid-template-columns:30px 1fr 74px 64px 44px;gap:8px;align-items:center;margin-top:10px}
+.sets{display:grid;grid-template-columns:32px 1fr 74px 64px 44px;gap:8px;align-items:center;margin-top:10px}
 .sets .h{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink-3);text-align:center}
-.sets .n{font-family:var(--display);font-weight:800;text-align:center;color:var(--ink-2);min-height:36px;border-radius:10px;background:rgba(255,255,255,.05)}
-.sets .n.tw{color:var(--gold)}.sets .n.td{color:#7fb4ff}.sets .n.tf{color:var(--bad)}
+.sets .n{font-family:var(--display);font-weight:800;text-align:center;color:var(--ink-2);min-height:44px;border-radius:10px;background:rgba(255,255,255,.05)}
+.sets .n.tw{color:var(--gold)}.sets .n.td{color:var(--blue)}.sets .n.tf{color:var(--bad)}
 .exmeta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.exmeta .chip{font-size:12px;padding:5px 10px}
-.exnote{margin-top:10px;min-height:38px!important;font-size:14px!important}
+.exnote{margin-top:10px;min-height:44px!important;font-size:16px!important}
 .sslink{align-self:center;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-2);margin:-10px 0}
 .ex.ss{border-color:rgba(123,108,255,.75)}
 .sets .prev{font-size:13px;color:var(--ink-3);text-align:center;font-variant-numeric:tabular-nums}
-.sets input{height:40px;min-height:40px;padding:0 4px;text-align:center;border-radius:12px;font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums}
+.sets input{height:44px;min-height:44px;padding:0 4px;text-align:center;border-radius:12px;font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums}
 .hx{position:absolute;left:50%;top:50%;margin:0;transform:translate(-50%,-50%) scale(2.4);opacity:.011;z-index:3;cursor:pointer}
 .check .hx{transform:translate(-50%,-50%) scale(1.4)}
 #nav .navhx{z-index:0;transform:translate(-50%,-50%) scale(6.4,2)}
@@ -222,9 +233,9 @@ div.chip{flex:none}
 div.btn .hx{transform:translate(-50%,-50%) scale(9,2.6)}
 div.ltile .hx{transform:translate(-50%,-50%) scale(2.6,3.6)}
 .hapt{display:flex;align-items:center;justify-content:space-between;gap:12px}
-.check{position:relative;cursor:pointer;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;justify-self:center}
+.check{position:relative;cursor:pointer;width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);display:grid;place-items:center;justify-self:center}
 .check svg{width:18px;height:18px;stroke:var(--ink-3);stroke-width:3;fill:none;stroke-linecap:round;stroke-linejoin:round}
-.check.on{background:var(--good);border-color:var(--good)}.check.on svg{stroke:#06281a}
+.check.on{background:var(--good);border-color:transparent}.check.on svg{stroke:#06281a}
 .done input{background:rgba(95,227,161,.12);border-color:rgba(95,227,161,.3)}
 
 /* lists */
@@ -234,13 +245,13 @@ div.ltile .hx{transform:translate(-50%,-50%) scale(2.6,3.6)}
 .bars{display:flex;flex-direction:column;gap:12px}
 .barrow{display:grid;grid-template-columns:92px 1fr 28px;gap:10px;align-items:center;font-size:13px}
 .track{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden}
-.track i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--cool),var(--warm))}
+.track i{display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,var(--cool),var(--warm));background:linear-gradient(90deg in oklch,var(--cool),var(--warm))}
 .banner{padding:14px 18px;line-height:1.45;border-radius:18px;font-size:13px;background:rgba(255,209,102,.12);border:1px solid rgba(255,209,102,.35);color:#ffe6a8}
 .emblem{flex:none}
 .rankrow{display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:center}
 
 /* sheet */
-#scrim{position:absolute;inset:0;z-index:10;background:rgba(3,4,10,.55);display:none;align-items:flex-end;justify-content:center;box-sizing:border-box;padding:calc(env(safe-area-inset-top) + 12px) 16px calc(var(--sab) + 14px)}
+#scrim{position:absolute;inset:0;z-index:10;background:rgb(3 4 10 / .55);display:none;align-items:flex-end;justify-content:center;box-sizing:border-box;padding:calc(env(safe-area-inset-top) + 12px) max(16px,env(safe-area-inset-right)) calc(var(--sab) + 14px) max(16px,env(safe-area-inset-left))}
 #scrim.on{display:flex}
 #sheet{width:min(508px,100%);box-sizing:border-box;overflow-y:auto;overscroll-behavior:contain;padding:10px 18px 22px;border-radius:36px;-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);background:linear-gradient(180deg,rgba(40,44,70,.82),rgba(18,20,36,.9))}
 #sheet{position:relative;z-index:2}
@@ -299,7 +310,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.57';
+const LB=2.20462, DAY=864e5, VERSION='0.58';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -442,10 +453,10 @@ async function invitesSheet(){let list=[];try{const sn=await fb.F.getDocs(fb.F.c
 const pinGet=()=>{try{return JSON.parse(lsGet('.pin')||'null')}catch(e){return null}};
 async function pinHash(pin,salt){const base=await crypto.subtle.importKey('raw',new TextEncoder().encode(pin),'PBKDF2',false,['deriveBits']);return b64(await crypto.subtle.deriveBits({name:'PBKDF2',salt:unb64(salt),iterations:150000,hash:'SHA-256'},base,256))}
 function lockShow(forgot){const el=$('#lock');el.classList.add('on');el.innerHTML=forgot?`<div class="lockbox"><h2>Forgot your PIN?</h2><p class="muted">The only way back in is to erase this device's copy and remove the PIN. Anything synced to your account stays safe and returns when you sign in. Anything never synced is lost.</p><button class="btn danger block" data-a="lock-erase">Erase this device and remove PIN</button><button class="btn block" data-a="lock-back">Back</button></div>`
-  :`<div class="lockbox"><h2>Apex is locked</h2><p class="muted">Enter your PIN to continue.</p><input type="password" inputmode="numeric" autocomplete="off" id="lock-pin" placeholder="PIN" aria-label="PIN"><button class="btn primary block" data-a="unlock">Unlock</button><button class="info" data-a="lock-forgot">Forgot PIN</button></div>`}
+  :`<div class="lockbox"><h2>Apex is locked</h2><p class="muted">Enter your PIN to continue.</p><input type="password" inputmode="decimal" autocomplete="off" id="lock-pin" placeholder="PIN" aria-label="PIN"><button class="btn primary block" data-a="unlock">Unlock</button><button class="info" data-a="lock-forgot">Forgot PIN</button></div>`}
 async function unlock(){const p=pinGet(),i=$('#lock-pin');if(!p||!i)return;if(await pinHash(i.value,p.salt)===p.hash){$('#lock').classList.remove('on');$('#lock').innerHTML=''}else{i.value='';toast('Wrong PIN.')}}
-function pinSheet(){const on=!!pinGet();openSheet(on?`<h2>Turn off app lock</h2><div class="stack"><input type="password" inputmode="numeric" autocomplete="off" id="pin-a" placeholder="Current PIN"><button class="btn block" data-a="pin-off">Turn off</button></div>`
-  :`<h2>Set an app lock</h2><p>Apex will ask for this PIN when it opens and after it has been in the background for a minute. It protects this device only; set it separately on each one.</p><div class="stack"><input type="password" inputmode="numeric" autocomplete="off" id="pin-a" placeholder="PIN, 4 to 8 digits"><input type="password" inputmode="numeric" autocomplete="off" id="pin-b" placeholder="Same PIN again"><button class="btn primary block" data-a="pin-save">Turn on app lock</button></div>`,'pin')}
+function pinSheet(){const on=!!pinGet();openSheet(on?`<h2>Turn off app lock</h2><div class="stack"><input type="password" inputmode="decimal" autocomplete="off" id="pin-a" placeholder="Current PIN"><button class="btn block" data-a="pin-off">Turn off</button></div>`
+  :`<h2>Set an app lock</h2><p>Apex will ask for this PIN when it opens and after it has been in the background for a minute. It protects this device only; set it separately on each one.</p><div class="stack"><input type="password" inputmode="decimal" autocomplete="off" id="pin-a" placeholder="PIN, 4 to 8 digits"><input type="password" inputmode="decimal" autocomplete="off" id="pin-b" placeholder="Same PIN again"><button class="btn primary block" data-a="pin-save">Turn on app lock</button></div>`,'pin')}
 async function pinSave(){const a=$('#pin-a').value,b2=$('#pin-b').value;if(!/^\d{4,8}$/.test(a)){toast('Use 4 to 8 digits.');return}if(a!==b2){toast('The two PINs do not match.');return}const salt=b64(crypto.getRandomValues(new Uint8Array(16)));lsSet('.pin',JSON.stringify({salt,hash:await pinHash(a,salt)}));closeSheet();toast('App lock is on.')}
 async function pinOff(){const p=pinGet();if(p&&await pinHash($('#pin-a').value,p.salt)!==p.hash){toast('Wrong PIN.');return}lsDel('.pin');closeSheet();toast('App lock is off.')}
 let hiddenAt=0;
@@ -568,7 +579,7 @@ function train(){const a=S.active;if(!a){const last=S.workouts[S.workouts.length
     ${e.sets.map((s,j)=>{const p=prevFor(pe,e.sets,j),isPr=s.t!=='w'&&s.done&&best&&score(ex,s)>best.sc+1e-6,lab=s.t?SETT[s.t][0]:++wn;if(s.t&&s.t!=='w')wn++;
       return `<button class="n ${s.t?'t'+s.t:''}" data-a="set-type" data-x="${i}" data-s="${j}" aria-label="Set ${j+1}, ${s.t?SETT[s.t][1]:'normal set'}. Tap to change type">${isPr?'<span class="pr">PR</span>':lab}</button><span class="prev">${p?disp(p.w||0)+' × '+p.r:'—'}</span>
       <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" step="any" id="w-${i}-${j}" data-i="set" data-x="${i}" data-s="${j}" data-f="w" value="${disp(s.w)}" placeholder="${p?disp(p.w||0):'0'}" aria-label="Weight, set ${j+1}"></span>
-      <span class="${s.done?'done':''}"><input type="number" inputmode="numeric" id="r-${i}-${j}" data-i="set" data-x="${i}" data-s="${j}" data-f="r" value="${s.r??''}" placeholder="${p?p.r:'0'}" aria-label="Reps, set ${j+1}"></span>
+      <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" id="r-${i}-${j}" data-i="set" data-x="${i}" data-s="${j}" data-f="r" value="${s.r??''}" placeholder="${p?p.r:'0'}" aria-label="Reps, set ${j+1}"></span>
       <div role="button" tabindex="0" class="check ${s.done?'on':''}" data-a="check" data-x="${i}" data-s="${j}" aria-label="Mark set ${j+1} done" aria-pressed="${!!s.done}"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${HX}</div>`}).join('')}</div>
     <div class="row" style="margin-top:12px"><button class="btn sm" style="flex:1" data-a="add-set" data-x="${i}">Add set</button>${e.sets.length>1?`<button class="btn sm" data-a="rm-set" data-x="${i}">Remove last</button>`:''}</div></section>`}).join('')}
   ${(a.cardio||[]).length?`<section class="glass card"><h3 style="font-size:17px;font-weight:800">Cardio</h3><div class="list" style="margin-top:10px">${a.cardio.map((c,i)=>`<div class="row between"><span>${esc(c.type)} <span class="small muted">${c.mins} min${c.km?' · '+(S.settings.unit==='lb'?Math.round(c.km/1.609*10)/10+' mi':c.km+' km'):''}</span></span><button class="btn sm danger" data-a="cardio-rm" data-x="${i}">Remove</button></div>`).join('')}</div></section>`:''}
@@ -592,10 +603,10 @@ function lineChart(pts){if(pts.length<2)return '<div class="muted small">Log thi
   const X=t=>px+(W-2*px)*((t-t0)/Math.max(1,t1-t0)),Y=v=>py+(H-2*py)*(1-(v-lo)/Math.max(.001,hi-lo));
   const line=pts.map((p,i)=>(i?'L':'M')+X(p.t).toFixed(1)+' '+Y(p.v).toFixed(1)).join(' '),last=pts[pts.length-1],best=pts.reduce((a,b)=>b.v>a.v?b:a);
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Estimated one-rep max over time"><defs><linearGradient id="el" x1="0" x2="1"><stop offset="0" stop-color="#7b6cff"/><stop offset="1" stop-color="#ff7a59"/></linearGradient><linearGradient id="ef" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a59" stop-opacity=".26"/><stop offset="1" stop-color="#7b6cff" stop-opacity="0"/></linearGradient></defs>
-  ${[0,.5,1].map(f=>`<line x1="${px}" x2="${W-px}" y1="${py+(H-2*py)*f}" y2="${py+(H-2*py)*f}" stroke="rgba(255,255,255,.1)"/><text x="${px}" y="${py+(H-2*py)*f-3}" font-size="9" fill="rgba(245,247,252,.45)">${disp(hi-(hi-lo)*f)}</text>`).join('')}
+  ${[0,.5,1].map(f=>`<line x1="${px}" x2="${W-px}" y1="${py+(H-2*py)*f}" y2="${py+(H-2*py)*f}" stroke="rgba(255,255,255,.1)"/><text x="${px}" y="${py+(H-2*py)*f-3}" font-size="9" fill="rgb(245 247 252 / .72)">${disp(hi-(hi-lo)*f)} ${unit()}</text>`).join('')}
   <path d="${line} L${X(t1).toFixed(1)} ${H-py} L${X(t0).toFixed(1)} ${H-py} Z" fill="url(#ef)"/><path d="${line}" fill="none" stroke="url(#el)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-  <circle cx="${X(best.t).toFixed(1)}" cy="${Y(best.v).toFixed(1)}" r="4" fill="#ffd166"/><circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.v).toFixed(1)}" r="4.5" fill="#fff"/>
-  <text x="${px}" y="${H-3}" font-size="9" fill="rgba(245,247,252,.45)">${new Date(t0).toLocaleDateString(undefined,{month:'short',year:'2-digit'})}</text><text x="${W-px}" y="${H-3}" font-size="9" text-anchor="end" fill="rgba(245,247,252,.45)">${new Date(t1).toLocaleDateString(undefined,{month:'short',year:'2-digit'})}</text></svg>`}
+  <circle cx="${X(best.t).toFixed(1)}" cy="${Y(best.v).toFixed(1)}" r="4" fill="#ffd166"/><circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.v).toFixed(1)}" r="4.5" fill="#fff"/>${best!==last?`<text x="${Math.min(W-px,Math.max(px,X(best.t))).toFixed(1)}" y="${Math.max(9,Y(best.v)-8).toFixed(1)}" font-size="9" font-weight="700" text-anchor="${X(best.t)>W*.75?'end':X(best.t)<W*.25?'start':'middle'}" fill="#ffd166">Best ${disp(best.v)} ${unit()}</text>`:''}<text x="${(X(last.t)-7).toFixed(1)}" y="${Math.min(H-py-4,Y(last.v)+14).toFixed(1)}" font-size="9" font-weight="700" text-anchor="end" fill="#fff">${best===last?'Best and latest ':'Latest '}${disp(last.v)} ${unit()}</text>
+  <text x="${px}" y="${H-3}" font-size="9" fill="rgb(245 247 252 / .72)">${new Date(t0).toLocaleDateString(undefined,{month:'short',year:'2-digit'})}</text><text x="${W-px}" y="${H-3}" font-size="9" text-anchor="end" fill="rgb(245 247 252 / .72)">${new Date(t1).toLocaleDateString(undefined,{month:'short',year:'2-digit'})}</text></svg>`}
 function exSheet(id){const ex=exById(id),ses=[];
   for(const w of V().workouts){const sets=w.exercises.filter(x=>x.exId===id).flatMap(x=>x.sets);if(!sets.length)continue;let sc=0,top=sets[0],vol=0;for(const s of sets){const v=score(ex,s);if(v>sc){sc=v;top=s}vol+=(s.w||0)*(s.r||0)}ses.push({t:w.start,sc,top,vol,sets,prs:(w.prs||[]).filter(p=>p.exId===id)})}
   const u=unit(),r=STD[id]?rankFor(id):null,bw=bwNow();let body;
@@ -634,10 +645,10 @@ function chart(list){const pts=list.slice(-90);if(pts.length<2)return '<div clas
   const X=d=>px+(W-2*px)*((new Date(d).getTime()-t0)/Math.max(1,t1-t0)),Y=v=>py+(H-2*py)*(1-(v-lo)/(hi-lo));
   const line=tr.map((v,i)=>(i?'L':'M')+X(pts[i].d).toFixed(1)+' '+Y(v).toFixed(1)).join(' '),lx=X(pts[pts.length-1].d),ly=Y(tr[tr.length-1]);
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Weight trend chart"><defs><linearGradient id="cl" x1="0" x2="1"><stop offset="0" stop-color="#7b6cff"/><stop offset="1" stop-color="#ff7a59"/></linearGradient><linearGradient id="cf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff7a59" stop-opacity=".28"/><stop offset="1" stop-color="#7b6cff" stop-opacity="0"/></linearGradient></defs>
-  ${[0,.5,1].map(f=>`<line x1="${px}" x2="${W-px}" y1="${py+(H-2*py)*f}" y2="${py+(H-2*py)*f}" stroke="rgba(255,255,255,.1)"/><text x="${px}" y="${py+(H-2*py)*f-3}" font-size="9" fill="rgba(245,247,252,.45)">${disp(hi-(hi-lo)*f)}</text>`).join('')}
+  ${[0,.5,1].map(f=>`<line x1="${px}" x2="${W-px}" y1="${py+(H-2*py)*f}" y2="${py+(H-2*py)*f}" stroke="rgba(255,255,255,.1)"/><text x="${px}" y="${py+(H-2*py)*f-3}" font-size="9" fill="rgb(245 247 252 / .72)">${disp(hi-(hi-lo)*f)} ${unit()}</text>`).join('')}
   <path d="${line} L${lx.toFixed(1)} ${H-py} L${X(pts[0].d).toFixed(1)} ${H-py} Z" fill="url(#cf)"/>
   ${pts.map(p=>`<circle cx="${X(p.d).toFixed(1)}" cy="${Y(p.kg).toFixed(1)}" r="1.8" fill="rgba(255,255,255,.45)"/>`).join('')}
-  <path d="${line}" fill="none" stroke="url(#cl)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="5" fill="#fff"/></svg>`}
+  <path d="${line}" fill="none" stroke="url(#cl)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="${lx.toFixed(1)}" cy="${ly.toFixed(1)}" r="5" fill="#fff"/><text x="${(lx-8).toFixed(1)}" y="${(ly<py+22?ly+16:ly-9).toFixed(1)}" font-size="9" font-weight="700" text-anchor="end" fill="#fff">Trend ${disp(tr[tr.length-1])} ${unit()}</text><text x="${px}" y="${H-1}" font-size="9" fill="rgb(245 247 252 / .72)">${new Date(t0).toLocaleDateString(undefined,{day:'numeric',month:'short'})}</text><text x="${W-px}" y="${H-1}" font-size="9" text-anchor="end" fill="rgb(245 247 252 / .72)">${new Date(t1).toLocaleDateString(undefined,{day:'numeric',month:'short'})} · dots are weigh-ins</text></svg>`}
 function body(){const l=V().weights,tr=trend(l),cur=l[l.length-1],tnow=tr[tr.length-1];
   const ago=n=>{if(!cur)return null;const cut=ymd(Date.now()-n*DAY);let idx=-1;for(let i=0;i<l.length;i++)if(l[i].d<=cut)idx=i;return idx<0?null:tnow-tr[idx]};
   const ch=v=>v==null?'—':(v>0?'+':'')+disp(v)+' '+unit();
@@ -827,13 +838,13 @@ function finish(){const a=S.active;const exs=a.exercises.map(e=>{const done=e.se
   save(monthKey(w.start),'active');go('history');expanded=w.id;render();summarySheet(w.id,true);if(typeof boardPublish==='function')boardPublish(true);if(watchOn())setTimeout(()=>toast('End the workout on your Apple Watch too.'),1400)}
 let cardioType='Run';
 function cardioSheet(){openSheet(`<h2>Add cardio</h2><div class="stack"><div class="row wrap" style="gap:8px">${CARDIO.map(c=>`<button class="chip ${c===cardioType?'on':''}" data-a="cardio-type" data-v="${c}">${c}</button>`).join('')}</div>
-  <div class="row" style="gap:10px"><label style="flex:1"><span class="small muted">Minutes</span><input type="number" inputmode="numeric" id="cd-mins" placeholder="20"></label><label style="flex:1"><span class="small muted">Distance (${S.settings.unit==='lb'?'mi':'km'}), optional</span><input type="number" inputmode="decimal" step="any" id="cd-dist" placeholder="0"></label></div>
+  <div class="row" style="gap:10px"><label style="flex:1"><span class="small muted">Minutes</span><input type="number" inputmode="decimal" id="cd-mins" placeholder="20"></label><label style="flex:1"><span class="small muted">Distance (${S.settings.unit==='lb'?'mi':'km'}), optional</span><input type="number" inputmode="decimal" step="any" id="cd-dist" placeholder="0"></label></div>
   <button class="btn primary block" data-a="cardio-save">Add to workout</button></div>`,'cardio')}
 function startRest(exId){const n=exId?restFor(exId):S.settings.rest;if(!n)return;rest={end:Date.now()+n*1000,total:n};tick()}
 function stopRest(){rest=null;$('#rest').classList.remove('on')}
 let actx=null;function beep(){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.35)}catch(e){}}
 function tick(){const el=$('#elapsed');if(el&&S.active){const s=Math.floor((Date.now()-S.active.start)/1000);el.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' elapsed'}
-  if(rest){const left=Math.ceil((rest.end-Date.now())/1000);if(left<=0){beep();haptic();stopRest();toast('Rest over. Next set.')}else{$('#rest').classList.add('on');$('#restt').textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');$('#restbar').style.width=Math.max(0,100-left/rest.total*100)+'%'}}}
+  if(rest){const left=Math.ceil((rest.end-Date.now())/1000);if(left<=0){beep();haptic();stopRest();toast('Rest over. Next set.')}else{$('#rest').classList.add('on');$('#restt').textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');$('#restbar').style.transform='scaleX('+Math.max(0,1-left/rest.total).toFixed(4)+')'}}}
 setInterval(tick,1000);
 
 /* ================= import / export ================= */
@@ -945,6 +956,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   if(!actx){try{actx=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}
   if((a==='open'||a==='launcher')&&b.closest('#nav')&&Date.now()-lastTabDrag<450)return;
   haptic();pushMode=(a==='info'||a==='ex'||a==='coach-evidence'||a==='coach-why')&&!!b.closest('#sheet');
+  if(typeof polishAction==='function'&&polishAction(a,b.dataset.v,b))return;
   switch(a){
   case 'tab':go(v);break;
   case 'open':openItem(v);break;
@@ -1047,7 +1059,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 /* ================= boot ================= */
 </script>
 <script>/* the version in the address lets the service worker keep these files and serve them instantly; a new version asks for new addresses */
-['nutrition','meals','coach','summary','studies','board','progress','extras','more','welcome'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
+['nutrition','meals','coach','summary','studies','board','progress','extras','more','welcome','polish'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
 <script>
 /* iOS can hand a Home Screen app a page that is shorter than the screen, leaving a dark strip under the dock. Measure the
    shortfall and stretch the page by that much. iOS changes the page height at moments that fire no resize event (coming back

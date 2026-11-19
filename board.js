@@ -12,7 +12,7 @@ ICON.board='<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 
 .brow.me{background:rgba(123,108,255,.16);border-radius:14px;padding:12px 10px;margin:0 -6px;border-top-color:transparent}
 .brow.me+.brow{border-top-color:transparent}
 .pwwrap{position:relative;display:block}.pwwrap input{padding-right:64px!important;width:100%}
-.pwwrap .eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:13px;font-weight:700;color:var(--ink-2);padding:8px 10px;border-radius:10px}
+.pwwrap .eye{position:absolute;right:2px;top:50%;transform:translateY(-50%);min-height:44px;min-width:56px;font-size:13px;font-weight:700;color:var(--ink-2);padding:0 10px;border-radius:10px}
 .terms h3{font-size:15px;font-weight:800;margin:14px 0 4px}.terms p{margin:0 0 6px;font-size:14px;color:var(--ink-2)}
 .tick{display:flex;align-items:center;gap:10px;text-align:left}.tick .check{flex:none}
 `;document.head.appendChild(st)})();
@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.58',['Undo instead of "Are you sure?" when you delete a set, exercise, workout, food, meal or weigh-in','The screen stays on during a workout','Big + and − buttons above the keyboard for weight and reps','Larger tap targets and easier-to-read text','Charts label their lines and units directly','A dot on the settings button shows when changes are syncing']],
   ['0.57',['A welcome guide for new people: Home Screen steps for your phone, a quick tour, and how to create an account. Replay it from Settings, About']],
   ['0.56',['Choose your own Home Screen icon and colour','Unlock with Face ID or fingerprint','Calendar reminders for weigh-ins, workouts and food','Warm-up calculator, move exercises up or down, and time estimates','Technique cues and a demo link on each exercise']],
   ['0.55',['Ask: questions about your own training, weight and food, answered by AI','Coach: an AI explanation of your week (the plan itself stays rule-based)','Saved studies now follow your account between devices','Backups can include progress photos, and Settings shows when you last made one']],
@@ -91,7 +92,7 @@ function boardScreen(){const c=boardCfg(),head=`<div class="top"><h1>Leaderboard
   if(boardState==='idle'||(boardState==='ok'&&Date.now()-boardAt>120000))setTimeout(()=>{boardPublish(true).then(boardLoad)},0);
   let body='';
   if(boardState==='error')body=`<section class="glass card"><h2>${boardErr==='rules'?'Not switched on yet':'Could not load the leaderboard'}</h2><p style="margin:0 0 12px">${boardErr==='rules'?(isOwner?'Add the leaderboard block to your Firestore rules (it is in the README), then try again.':'The person who runs this app needs to switch the leaderboard on. Let them know.'):'Check your connection and try again.'}</p><button class="btn block" data-a="board-refresh">Try again</button>${boardErr==='rules'?'':`<div class="small muted" style="margin-top:10px">Details: ${esc(boardErr)}</div>`}</section>`;
-  else if(!boardList)body=`<section class="glass card" style="text-align:center"><div class="spin"></div><p class="muted" style="margin:14px 0 0">Loading…</p></section>`;
+  else if(!boardList)body=typeof skelRows==='function'?skelRows(3):'';
   else body=`<div class="seg" style="align-self:flex-start"><button data-a="board-view" data-v="rank" class="${boardView==='rank'?'on':''}">Overall</button><button data-a="board-view" data-v="week" class="${boardView==='week'?'on':''}">This week</button><button data-a="board-view" data-v="lifts" class="${boardView==='lifts'?'on':''}">Lifts</button></div>
     ${boardView==='lifts'?`<div class="stchips hscroll">${Object.keys(STD).map(id=>`<button class="chip ${boardLift===id?'on':''}" data-a="board-lift" data-v="${id}">${esc(exById(id).name)}</button>`).join('')}</div>`:''}
     <input type="text" id="board-q" autocapitalize="off" autocomplete="off" placeholder="Search a name" value="${esc(boardQ)}">

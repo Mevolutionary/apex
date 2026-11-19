@@ -10,7 +10,7 @@ ICON.progress='<path d="M4 20V10M10 20V4M16 20v-8M21 20H3"/>';
 .mmap .m{stroke:rgba(255,255,255,.22);stroke-width:1}.mmap .n{fill:rgba(255,255,255,.07);stroke:rgba(255,255,255,.16);stroke-width:1}
 .mleg{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--ink-2);margin-top:10px}.mleg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
 .awards{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.aw{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:14px 6px 12px;border-radius:20px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:12px;font-weight:700;line-height:1.25}
+.aw{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:14px 6px 12px;border-radius:var(--ir);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);font-size:12px;font-weight:700;line-height:1.25}
 .aw .ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.08);color:var(--ink-3)}
 .aw .ic svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .aw.got{background:rgba(255,209,102,.1);border-color:rgba(255,209,102,.45)}.aw.got .ic{background:linear-gradient(145deg,#ffe08a,#f0a93b);color:#3a2a00}
