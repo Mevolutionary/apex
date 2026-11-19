@@ -17,13 +17,13 @@
 `;document.head.appendChild(st)})();
 
 const ST_TOPICS=[
-  ['hypertrophy','Muscle growth','("resistance training" OR "strength training") AND (hypertrophy OR "muscle mass" OR "muscle growth" OR "muscle thickness")'],
-  ['strength','Strength','("resistance training" OR "strength training") AND ("maximal strength" OR "1RM" OR "one repetition maximum" OR "muscle strength")'],
-  ['protein','Protein','("protein intake" OR "dietary protein" OR "protein supplementation") AND ("resistance training" OR "lean mass" OR "muscle protein synthesis")'],
-  ['fatloss','Fat loss','("weight loss" OR "fat loss" OR "energy restriction" OR "caloric restriction") AND ("body composition" OR "lean mass" OR "fat mass")'],
-  ['supps','Supplements','(creatine OR caffeine OR "beta-alanine" OR citrulline OR "dietary supplements") AND ("resistance training" OR "exercise performance" OR "muscle strength")'],
-  ['recovery','Sleep and recovery','(sleep OR "muscle soreness" OR "recovery") AND ("resistance training" OR "resistance exercise" OR athletes) AND (performance OR "muscle damage" OR strength)'],
-  ['cardio','Cardio','("concurrent training" OR "high-intensity interval training" OR "aerobic exercise") AND ("resistance training" OR "body composition" OR "cardiorespiratory fitness")']];
+  ['hypertrophy','Muscle growth','("resistance training" OR "strength training") AND (hypertrophy OR "muscle mass" OR "muscle growth" OR "muscle thickness")','"resistance training" AND hypertrophy'],
+  ['strength','Strength','("resistance training" OR "strength training") AND ("maximal strength" OR "1RM" OR "one repetition maximum" OR "muscle strength")','"resistance training" AND strength'],
+  ['protein','Protein','("protein intake" OR "dietary protein" OR "protein supplementation") AND ("resistance training" OR "lean mass" OR "muscle protein synthesis")','"protein intake" AND "resistance training"'],
+  ['fatloss','Fat loss','("weight loss" OR "fat loss" OR "energy restriction" OR "caloric restriction") AND ("body composition" OR "lean mass" OR "fat mass")','"weight loss" AND "body composition"'],
+  ['supps','Supplements','(creatine OR caffeine OR "beta-alanine" OR citrulline OR "dietary supplements") AND ("resistance training" OR "exercise performance" OR "muscle strength")','creatine AND "resistance training"'],
+  ['recovery','Sleep and recovery','(sleep OR "muscle soreness" OR "recovery") AND ("resistance training" OR "resistance exercise" OR athletes) AND (performance OR "muscle damage" OR strength)','sleep AND "resistance training"'],
+  ['cardio','Cardio','("concurrent training" OR "high-intensity interval training" OR "aerobic exercise") AND ("resistance training" OR "body composition" OR "cardiorespiratory fitness")','"concurrent training"']];
 const ST_STRONG=' AND (PUB_TYPE:"meta-analysis" OR PUB_TYPE:"systematic review" OR PUB_TYPE:"randomized controlled trial")';
 const ST_BASE=' AND HAS_ABSTRACT:y AND SRC:MED NOT (TITLE:rat OR TITLE:rats OR TITLE:mice OR TITLE:mouse)';
 const ST_API='https://www.ebi.ac.uk/europepmc/webservices/rest/search';
@@ -54,10 +54,14 @@ function stLevel(p){const t=(p.types||[]).join('|').toLowerCase(),tt=(p.t||'').t
 const stBadge=p=>{const L=ST_LEVELS[stLevel(p)];return`<span class="lvl l${L[0]}"><i></i>${L[1]}</span>`};
 
 const stKey=()=>stQ?'q:'+stQ+'|'+stStrong:stTopic+'|'+stStrong;
-function stQuery(){const base=stQ?'('+stQ.replace(/[()]/g,' ')+')':ST_TOPICS.find(t=>t[0]===stTopic)[2];return base+(stStrong?ST_STRONG:'')+ST_BASE}
+/* Recent papers only: sorting millions of matches by date is what made the database slow to answer. lite=true is the fallback
+   search used after a timeout: fewer words, a shorter date range, and study-type filtering done here instead of by the database. */
+const stSince=y=>{const d=new Date();d.setFullYear(d.getFullYear()-y);return d.toISOString().slice(0,10)};
+function stQuery(lite){const t=ST_TOPICS.find(x=>x[0]===stTopic),base=stQ?'('+stQ.replace(/[()"]/g,' ')+')':lite?t[3]:t[2];return base+(stStrong&&!lite?ST_STRONG:'')+' AND FIRST_PDATE:['+stSince(lite?1:3)+' TO 3000-01-01]'+ST_BASE}
 async function stLoad(more){const k=stKey(),f=stFeed[k]||(stFeed[k]={list:[],state:'idle',cursor:'*',done:false});if(f.state==='loading')return;if(more&&f.done)return;
   f.state='loading';if(tab==='studies')render();
-  try{const j=await getJSON(ST_API+'?query='+encodeURIComponent(stQuery())+'&format=json&resultType=core&pageSize=20&sort='+encodeURIComponent('P_PDATE_D desc')+'&cursorMark='+encodeURIComponent(more?f.cursor:'*'),15000);
+  const url=lite=>ST_API+'?query='+encodeURIComponent(stQuery(lite))+'&format=json&resultType=core&pageSize=20&sort='+encodeURIComponent('P_PDATE_D desc')+'&cursorMark='+encodeURIComponent(more&&!f.lite?f.cursor:'*');
+  try{let j;try{if(f.lite&&more)throw 0;j=await getJSON(url(false),25000);f.lite=false}catch(e1){if(more&&!f.lite)throw e1;j=await getJSON(url(true),25000);if(!more)f.lite=true;if(j&&j.resultList&&stStrong)j.resultList.result=(j.resultList.result||[]).filter(r=>['meta','sys','rct','trial','review'].includes(stLevel(stPaper(r))))}
     if(!j||j.notFound)throw{why:'The research database returned nothing.'};
     const got=(((j.resultList||{}).result)||[]).map(stPaper).filter(p=>p.id&&p.t),have=new Set(f.list.map(p=>p.id));
     if(!more)f.list=[];got.forEach(p=>{if(more&&have.has(p.id))return;f.list.push(p)});
@@ -128,7 +132,7 @@ async function stRunAI(id){const p=stFind(id);if(!p||stBusyAI.has(id))return;if(
     const d=stStore();d.ai[id]=out;stPut(d);stBusyAI.delete(id);stRefreshAI(id);if(tab==='studies'&&!$('#scrim').classList.contains('on'))render()}
   catch(e){stBusyAI.delete(id);stRefreshAI(id);const code=e&&e.code;
     if(code==='signin'){aiGate();return}if(code==='nokey'){geminiGuide();return}
-    const msg={busy:'Google\'s AI is overloaded right now. That is on their side. Try again in a minute.',timeout:'The AI took too long to answer. Try again in a moment.',limit:'The free AI allowance is used up for now. Try again later.',badkey:'Google rejected the AI key. Check it under Settings, Nutrition.',unreadable:'The AI gave an answer that could not be read. Try again.'}[code]||(navigator.onLine===false?'This device is offline.':'The AI overview did not work this time. Try again in a moment.');
+    const msg={busy:'Google\'s AI is overloaded right now. That is on their side. Try again in a minute.',timeout:'The AI took too long to answer. Try again in a moment.',limit:'The free AI allowance is used up for now. Try again later.',badkey:'Google rejected the AI key. Check it under Settings, Nutrition, AI key.',unreadable:'The AI gave an answer that could not be read. Try again.'}[code]||(navigator.onLine===false?'This device is offline.':'The AI overview did not work this time. Try again in a moment.');
     toast(msg+(code?' ('+code+(e.status?' '+e.status:'')+(e.model?', '+e.model:'')+')':''))}}
 
 function stHow(){const row=k=>{const L=ST_LEVELS[k];return`<div class="tile small"><span class="lvl l${L[0]}"><i></i>${L[1]}</span><div style="margin-top:8px">${L[2]}</div></div>`};
