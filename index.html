@@ -310,7 +310,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.63';
+const LB=2.20462, DAY=864e5, VERSION='0.64';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -935,8 +935,13 @@ function importHevy(text){const rows=parseCSV(text);if(rows.length<2){toast('Tha
 /* ================= updates ================= */
 /* The home-screen app keeps its own cached copy. This asks the server for the live version and offers to reload when it differs. */
 let newVersion=null;
-async function checkUpdate(manual){try{const t=await (await fetch('index.html?u='+Date.now(),{cache:'no-store'})).text(),m=/VERSION='([^']+)'/.exec(t);
-    if(m&&m[1]!==VERSION){newVersion=m[1];const busySheet=$('#scrim').classList.contains('on')&&$('#sheet').dataset.kind!=='settings';
+/* Update check (A4): reads the tiny version.json (a few bytes) rather than the whole page. Only a NEWER version prompts,
+   so a version.json that lags behind can never cause repeated prompts. Falls back to reading index.html if the file is missing. */
+const verNewer=(a,b)=>{const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<Math.max(x.length,y.length);i++){const d=(x[i]||0)-(y[i]||0);if(d)return d>0}return false};
+async function latestVersion(){try{const r=await fetch('version.json?u='+Date.now(),{cache:'no-store'});if(r.ok){const j=await r.json();if(j&&j.v)return String(j.v)}}catch(e){}
+  const t=await (await fetch('index.html?u='+Date.now(),{cache:'no-store'})).text(),m=/VERSION='([^']+)'/.exec(t);return m?m[1]:null}
+async function checkUpdate(manual){try{const lv=await latestVersion(),m=lv?[0,lv]:null;
+    if(m&&verNewer(m[1],VERSION)){newVersion=m[1];const busySheet=$('#scrim').classList.contains('on')&&$('#sheet').dataset.kind!=='settings';
       if(manual||(!S.active&&!busySheet))openSheet(`<h2>Update available</h2><p>Apex ${esc(newVersion)} is ready. You have ${VERSION}. Your data is not affected.</p><div class="row"><button class="btn" style="flex:1" data-a="close">Later</button><button class="btn primary" style="flex:1" data-a="apply-update">Update now</button></div>`)}
     else if(manual)toast('You have the latest version.')}catch(e){if(manual)toast('Could not check. Are you online?')}}
 async function applyUpdate(){try{if(window.caches){const ks=await caches.keys();await Promise.all(ks.map(k=>caches.delete(k)))}if(navigator.serviceWorker){const r=await navigator.serviceWorker.getRegistration();r&&await r.update()}}catch(e){}location.reload()}

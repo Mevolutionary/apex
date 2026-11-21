@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.64',['Checking for updates now downloads a few bytes instead of the whole app']],
   ['0.63',['Ticking a set is quicker: only that row updates']],
   ['0.62',['Faster syncing: the app now downloads only what changed since last time, not your whole history']],
   ['0.61',['Saving no longer pauses the app: your history now lives in the phone\'s database and only the parts that changed are written']],
