@@ -85,7 +85,7 @@ let wakeLock=null,wakeAsk=false;
 async function wakeSync(){const want=!!(S&&S.active)&&document.visibilityState==='visible';
   if(want&&!wakeLock&&!wakeAsk&&navigator.wakeLock){wakeAsk=true;try{wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>{wakeLock=null})}catch(e){wakeLock=null}wakeAsk=false;if(!(S&&S.active))wakeSync()}
   else if(!want&&wakeLock){const l=wakeLock;wakeLock=null;try{await l.release()}catch(e){}}}
-document.addEventListener('visibilitychange',wakeSync);
+document.addEventListener('visibilitychange',()=>wakeSync());
 
 /* ---------- big +/- steppers above the keyboard for weight and reps ---------- */
 let stepIn=null;

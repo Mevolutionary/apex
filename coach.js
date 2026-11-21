@@ -60,7 +60,7 @@ function coachPlan(){const c=coachCfg(),{t,pri,lagM,lag}=coachTargets(),names=SP
 /* The order of sessions in the week is the person's choice; it defaults to the split's usual order. */
 function coachOrder(c){const n=(SPLITS[c.days]||SPLITS[4]).length,o=(c.order||{})[c.days];return Array.isArray(o)&&o.length===n&&o.slice().sort().join()===[...Array(n).keys()].join()?o:[...Array(n).keys()]}
 /* Deload hint: two or more lifts whose best set has slipped over the last two sessions, or eight straight weeks of three or more workouts. */
-function deloadHint(){if(isEmpty())return'';const by={};S.workouts.forEach(w=>w.exercises.forEach(e=>{const ex=exById(e.exId);let sc=0;e.sets.forEach(q=>{sc=Math.max(sc,score(ex,q))});(by[e.exId]=by[e.exId]||[]).push(sc)}));
+function deloadHint(){if(isEmpty())return'';const by={};S.workouts.forEach(w=>w.exercises.forEach(e=>{const ex=exById(e.exId);let sc=0;e.sets.forEach(q=>{sc=Math.max(sc,score(ex,q,w.start))});(by[e.exId]=by[e.exId]||[]).push(sc)}));
   const stalled=Object.keys(by).filter(id=>{const l=by[id].slice(-4);return by[id].length>=5&&Math.max(l[2],l[3])<Math.max(l[0],l[1])*.98});
   let wk=0;for(let i=1;i<=26;i++){const from=weekStart()-i*7*DAY;if(S.workouts.filter(w=>w.start>=from&&w.start<from+7*DAY).length>=3)wk++;else break}
   if(stalled.length<2&&wk<8)return'';

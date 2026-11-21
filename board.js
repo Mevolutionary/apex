@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.71',['The screen stays awake during workouts (Settings → General to turn off)','Optional spoken rest cues for earbuds: "Rest done" and your next set','Optional rest beep that plays even with the ringer on silent','Fairer estimated 1RM: sets above 10 reps no longer inflate it, PRs or ranks','Pull-ups, dips and other bodyweight lifts now use your weight on the day of the set, so old PRs stay put']],
   ['0.70',['Swiping left or right between pages now slides a little slower, so you can see the page move']],
   ['0.69',['The app font is now built in, so Apex no longer contacts Google Fonts']],
   ['0.68',['Uses less battery during a workout: the background stays still while you train']],

@@ -319,7 +319,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.70';
+const LB=2.20462, DAY=864e5, VERSION='0.71';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -340,10 +340,18 @@ const allEx=()=>LIB.concat(S.custom);
 const isEmpty=()=>!S.workouts.length&&!S.weights.length&&!S.active;
 const V=()=>isEmpty()?DEMO:S;           /* what the screens read: real data, or marked examples */
 const bwNow=()=>{const w=V().weights;return w.length?w[w.length-1].kg:0};
-const e1rm=(w,r)=>r<=1?w:w*(1+r/30);
-function score(ex,set){const load=(set.w||0)+(ex.bw?bwNow():0);return load>0?e1rm(load,set.r||0):(set.r||0)/100}
-function bestOf(list,exId){let b=null;const ex=exById(exId);for(const w of list)for(const e of w.exercises)if(e.exId===exId)for(const s of e.sets){const sc=score(ex,s);if(!b||sc>b.sc)b={sc,w:s.w||0,r:s.r,at:w.start}}return b}
-function recomputePRs(list){list.sort((a,b)=>a.start-b.start);const best={};for(const w of list){w.prs=[];for(const e of w.exercises){const ex=exById(e.exId);let sc=0,wt=0;for(const s of e.sets){sc=Math.max(sc,score(ex,s));wt=Math.max(wt,s.w||0)}
+/* A17: rep-based 1RM formulas drift 15-20% above about 10 reps, so a set of more than 10 reps is
+   scored as if it were 10 at that weight. That never overstates strength; higher-rep sets show up as rep PRs instead. */
+const E1RM_MAX_REPS=10;
+const e1rm=(w,r)=>r<=1?w:w*(1+Math.min(r,E1RM_MAX_REPS)/30);
+/* A18: bodyweight lifts add the trend weight on the day of the set, so old PRs don't move when your weight changes. */
+let bwAtCache=null;
+function bwAt(t){const ws=V().weights;if(!ws.length)return 0;if(t==null)t=Date.now();
+  if(!bwAtCache||bwAtCache.src!==ws||bwAtCache.n!==ws.length||bwAtCache.last!==ws[ws.length-1]){const sorted=ws.slice().sort((a,b)=>a.d<b.d?-1:a.d>b.d?1:0),tr=trend(sorted);bwAtCache={src:ws,n:ws.length,last:ws[ws.length-1],d:sorted.map(x=>x.d),v:tr}}
+  const d=ymd(t),c=bwAtCache;let lo=0,hi=c.d.length-1,k=-1;while(lo<=hi){const m=(lo+hi)>>1;if(c.d[m]<=d){k=m;lo=m+1}else hi=m-1}return c.v[k<0?0:k]}
+function score(ex,set,at){const load=(set.w||0)+(ex.bw?bwAt(at):0);return load>0?e1rm(load,set.r||0):(set.r||0)/100}
+function bestOf(list,exId){let b=null;const ex=exById(exId);for(const w of list)for(const e of w.exercises)if(e.exId===exId)for(const s of e.sets){const sc=score(ex,s,w.start);if(!b||sc>b.sc)b={sc,w:s.w||0,r:s.r,at:w.start}}return b}
+function recomputePRs(list){list.sort((a,b)=>a.start-b.start);const best={};for(const w of list){w.prs=[];for(const e of w.exercises){const ex=exById(e.exId);let sc=0,wt=0;for(const s of e.sets){sc=Math.max(sc,score(ex,s,w.start));wt=Math.max(wt,s.w||0)}
   const b=best[e.exId];if(b){if(sc>b.sc+1e-6)w.prs.push({exId:e.exId,type:'Est. 1RM',kg:sc});else if(wt>b.wt+1e-6)w.prs.push({exId:e.exId,type:'Heaviest',kg:wt})}
   best[e.exId]={sc:Math.max(sc,b?b.sc:0),wt:Math.max(wt,b?b.wt:0)}}}}
 const volume=w=>w.exercises.reduce((a,e)=>a+e.sets.reduce((x,s)=>x+(s.w||0)*(s.r||0),0),0);
@@ -669,7 +677,7 @@ function lineChart(pts){if(pts.length<2)return '<div class="muted small">Log thi
   <circle cx="${X(best.t).toFixed(1)}" cy="${Y(best.v).toFixed(1)}" r="4" fill="#ffd166"/><circle cx="${X(last.t).toFixed(1)}" cy="${Y(last.v).toFixed(1)}" r="4.5" fill="#fff"/>${best!==last?`<text x="${Math.min(W-px,Math.max(px,X(best.t))).toFixed(1)}" y="${Math.max(9,Y(best.v)-8).toFixed(1)}" font-size="9" font-weight="700" text-anchor="${X(best.t)>W*.75?'end':X(best.t)<W*.25?'start':'middle'}" fill="#ffd166">Best ${disp(best.v)} ${unit()}</text>`:''}<text x="${(X(last.t)-7).toFixed(1)}" y="${Math.min(H-py-4,Y(last.v)+14).toFixed(1)}" font-size="9" font-weight="700" text-anchor="end" fill="#fff">${best===last?'Best and latest ':'Latest '}${disp(last.v)} ${unit()}</text>
   <text x="${px}" y="${H-3}" font-size="9" fill="rgb(245 247 252 / .72)">${new Date(t0).toLocaleDateString(undefined,{month:'short',year:'2-digit'})}</text><text x="${W-px}" y="${H-3}" font-size="9" text-anchor="end" fill="rgb(245 247 252 / .72)">${new Date(t1).toLocaleDateString(undefined,{month:'short',year:'2-digit'})}</text></svg>`}
 function exSheet(id){const ex=exById(id),ses=[];
-  for(const w of V().workouts){const sets=w.exercises.filter(x=>x.exId===id).flatMap(x=>x.sets);if(!sets.length)continue;let sc=0,top=sets[0],vol=0;for(const s of sets){const v=score(ex,s);if(v>sc){sc=v;top=s}vol+=(s.w||0)*(s.r||0)}ses.push({t:w.start,sc,top,vol,sets,prs:(w.prs||[]).filter(p=>p.exId===id)})}
+  for(const w of V().workouts){const sets=w.exercises.filter(x=>x.exId===id).flatMap(x=>x.sets);if(!sets.length)continue;let sc=0,top=sets[0],vol=0;for(const s of sets){const v=score(ex,s,w.start);if(v>sc){sc=v;top=s}vol+=(s.w||0)*(s.r||0)}ses.push({t:w.start,sc,top,vol,sets,prs:(w.prs||[]).filter(p=>p.exId===id)})}
   const u=unit(),r=STD[id]?rankFor(id):null,bw=bwNow();let body;
   if(!ses.length)body='<p>No sets logged for this exercise yet.</p>';
   else{const all=ses.flatMap(s=>s.sets),best=ses.reduce((a,b)=>b.sc>a.sc?b:a),bi=ses.indexOf(best),since=ses.length-1-bi,last=ses[ses.length-1];
@@ -845,7 +853,7 @@ function settingsSheet(){
   const body={
     general:`<div class="row between"><span>Weight units</span>${seg('unit',[['kg','kg'],['lb','lb']])}</div>
       <div class="row between"><span>Rank standards</span>${seg('sex',[['male','Male'],['female','Female']])}</div>
-      <div><div style="margin-bottom:8px">Rest timer between sets</div>${seg('rest',[[0,'Off'],[60,'60s'],[90,'90s'],[120,'120s'],[180,'180s']]).replace('class="seg"','class="seg" style="justify-content:space-between"')}</div>`,
+      <div><div style="margin-bottom:8px">Rest timer between sets</div>${seg('rest',[[0,'Off'],[60,'60s'],[90,'90s'],[120,'120s'],[180,'180s']]).replace('class="seg"','class="seg" style="justify-content:space-between"')}</div>${typeof generalExtra==='function'?generalExtra():''}`,
     access:`${(()=>{const u=uiGet(),sw=(k,on,label,sub)=>`<div class="row between" style="gap:12px"><span>${label}<br><span class="small muted">${sub}</span></span><div class="seg" style="flex:none"><button data-a="ui" data-k="${k}" data-v="0" class="${on?'':'on'}">Off</button><button data-a="ui" data-k="${k}" data-v="1" class="${on?'on':''}">On</button></div></div>`;
         return `      <div class="row between"><span>Text size</span><div class="seg">${[['100','Standard'],['112','Large'],['125','Larger']].map(o=>`<button data-a="ui" data-k="text" data-v="${o[0]}" class="${String(u.text)===o[0]?'on':''}">${o[1]}</button>`).join('')}</div></div>
       ${sw('calm',u.calm,'Reduce motion','Turns off slides, bounces and count-ups')}
@@ -905,7 +913,7 @@ function startRest(exId){const n=exId?restFor(exId):S.settings.rest;if(!n)return
 function stopRest(){rest=null;$('#rest').classList.remove('on')}
 let actx=null;function beep(){try{if(!actx)return;const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=880;g.gain.value=.15;o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+.35)}catch(e){}}
 function tick(){const el=$('#elapsed');if(el&&S.active){const s=Math.floor((Date.now()-S.active.start)/1000);el.textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0')+' elapsed'}
-  if(rest){const left=Math.ceil((rest.end-Date.now())/1000);if(left<=0){beep();haptic();stopRest();toast('Rest over. Next set.')}else{$('#rest').classList.add('on');$('#restt').textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');$('#restbar').style.transform='scaleX('+Math.max(0,1-left/rest.total).toFixed(4)+')'}}}
+  if(rest){const left=Math.ceil((rest.end-Date.now())/1000);if(left<=0){beep();haptic();stopRest();toast('Rest over. Next set.');if(typeof restDone==='function')restDone()}else{$('#rest').classList.add('on');$('#restt').textContent=Math.floor(left/60)+':'+String(left%60).padStart(2,'0');$('#restbar').style.transform='scaleX('+Math.max(0,1-left/rest.total).toFixed(4)+')'}}}
 setInterval(tick,1000);
 
 /* ================= import / export ================= */
@@ -1109,7 +1117,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
-  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof progressAction==='function')progressAction(a,v,b);if(typeof extrasAction==='function')extrasAction(a,v,b);if(typeof moreAction==='function')moreAction(a,v,b);if(typeof welcomeAction==='function')welcomeAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
+  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof progressAction==='function')progressAction(a,v,b);if(typeof extrasAction==='function')extrasAction(a,v,b);if(typeof moreAction==='function')moreAction(a,v,b);if(typeof welcomeAction==='function')welcomeAction(a,v,b);if(typeof workoutAction==='function')workoutAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
   }});
 document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
@@ -1125,7 +1133,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 /* ================= boot ================= */
 </script>
 <script>/* the version in the address lets the service worker keep these files and serve them instantly; a new version asks for new addresses */
-['nutrition','meals','coach','summary','studies','board','progress','extras','more','welcome','polish','perf'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
+['nutrition','meals','coach','summary','studies','board','progress','extras','more','welcome','polish','workout','perf'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
 <script>
 /* iOS can hand a Home Screen app a page that is shorter than the screen, leaving a dark strip under the dock. Measure the
    shortfall and stretch the page by that much. iOS changes the page height at moments that fire no resize event (coming back

@@ -23,7 +23,7 @@ function dataDigest(){const L=[],u=unit(),ws=S.workouts,now=Date.now();
   try{const lag=laggingLifts();if(lag.length)L.push('Lagging lifts (2+ tiers below best): '+lag.map(l=>exById(l.id).name).join(', ')+'.')}catch(e){}
   try{const dl=deloadHint();if(dl)L.push('The rule-based Coach is currently suggesting a lighter (deload) week: '+dl.replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').slice(0,220))}catch(e){}
   /* recent trend per frequently trained lift */
-  const by={};ws.slice(-40).forEach(w=>w.exercises.forEach(e=>{const ex=exById(e.exId);let sc=0;e.sets.forEach(q=>{sc=Math.max(sc,score(ex,q))});(by[e.exId]=by[e.exId]||[]).push(Math.round(lbOrKgX(sc)))}));
+  const by={};ws.slice(-40).forEach(w=>w.exercises.forEach(e=>{const ex=exById(e.exId);let sc=0;e.sets.forEach(q=>{sc=Math.max(sc,score(ex,q,w.start))});(by[e.exId]=by[e.exId]||[]).push(Math.round(lbOrKgX(sc)))}));
   const tr=Object.keys(by).filter(id=>by[id].length>=3).sort((a,b)=>by[b].length-by[a].length).slice(0,8).map(id=>`${exById(id).name} ${by[id].slice(-5).join('>')}`);if(tr.length)L.push(`Estimated 1RM (${u}) over recent sessions, oldest to newest: `+tr.join('; ')+'.');
   L.push('Last workouts: '+ws.slice(-6).map(w=>`${ymd(w.start)} ${w.name} (${setCount(w)} sets, ${big(volume(w))} ${u}${(w.cardio||[]).length?', cardio '+w.cardio.reduce((t,x)=>t+(+x.mins||0),0)+' min':''})`).join('; ')+'.');
   const wl=S.weights;if(wl.length){const t=trend(wl),cur=t[t.length-1],ago=n=>{const cut=ymd(now-n*DAY);let i=-1;wl.forEach((w,j)=>{if(w.d<=cut)i=j});return i<0?null:cur-t[i]},f=v=>v==null?'n/a':(v>0?'+':'')+disp(v);
