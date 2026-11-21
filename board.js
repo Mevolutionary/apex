@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.61',['Saving no longer pauses the app: your history now lives in the phone\'s database and only the parts that changed are written']],
   ['0.59',['Swiping between screens now slides the right way when you have reordered the dock','Your AI key is saved to your account, so it comes back after reinstalling','One AI setup guide for every AI feature','Studies loads more reliably','No more blank moment when changing screens, and a smoother dock']],
   ['0.58',['Undo instead of "Are you sure?" when you delete a set, exercise, workout, food, meal or weigh-in','The screen stays on during a workout','Big + and − buttons above the keyboard for weight and reps','Larger tap targets and easier-to-read text','Charts label their lines and units directly','A dot on the settings button shows when changes are syncing']],
   ['0.57',['A welcome guide for new people: Home Screen steps for your phone, a quick tour, and how to create an account. Replay it from Settings, About']],

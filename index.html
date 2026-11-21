@@ -310,7 +310,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.60';
+const LB=2.20462, DAY=864e5, VERSION='0.61';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -352,8 +352,37 @@ let blockReason='',isOwner=false,vaultKey=null;
 const lsGet=k=>{try{return localStorage.getItem(LS+k)}catch(e){return null}},lsSet=(k,v)=>{try{localStorage.setItem(LS+k,v)}catch(e){}},lsDel=k=>{try{localStorage.removeItem(LS+k)}catch(e){}};
 let fb=null,fbUser=null,cloudReady=false,cloudState=CFG?'connecting':'off',knownMonths=new Set(),pulling=false;
 const pend={},busy={};
-function localSave(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){toast('This device is out of storage space. Export a backup.')}}
-function localLoad(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);if(o&&Array.isArray(o.workouts))S=Object.assign(S,o)}}catch(e){}if(!S.food)S.food={};if(!S.foods)S.foods=[]}
+/* On-device storage (A1). History is kept in IndexedDB as one record per document, the same documents the cloud uses
+   (settings, weights, active, foods, wk_YYYY-MM, fd_YYYY-MM). localSave() only asks for a save: 300 ms later the documents
+   whose contents changed are written together in one go, and leaving the app writes straight away. Nothing blocks a tap.
+   The first time, the old single localStorage copy is moved across and kept until the next successful start, then removed.
+   If IndexedDB cannot be opened at all, the app falls back to that old localStorage copy. */
+let dataDB=null,storeMode='ls',lastDoc={},saveT=null;
+function lsSaveAll(){try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){toast('This device is out of storage space. Export a backup.')}}
+function lsLoad(){try{const t=localStorage.getItem(LS);if(t){const o=JSON.parse(t);if(o&&Array.isArray(o.workouts))S=Object.assign(S,o)}}catch(e){}if(!S.food)S.food={};if(!S.foods)S.foods=[]}
+function dbOpen(){return new Promise(res=>{try{const rq=indexedDB.open('apex-data',1);rq.onupgradeneeded=()=>rq.result.createObjectStore('docs');rq.onsuccess=()=>res(rq.result);rq.onerror=()=>res(null);rq.onblocked=()=>res(null)}catch(e){res(null)}})}
+function docKeys(){const ks=new Set(['settings','weights','active','foods']);for(const w of S.workouts)ks.add(monthKey(w.start));for(const d in S.food)ks.add('fd_'+d.slice(0,7));for(const k in lastDoc)ks.add(k);return[...ks]}
+/* build S from a set of documents (used for the on-device copy) */
+function fromDocs(m){const C={settings:null,custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
+  for(const id in m){const v=m[id]||{};if(id==='settings'){C.settings=v.settings;C.custom=v.custom||[];C.routines=v.routines||[]}else if(id==='weights')C.weights=v.list||[];else if(id==='active')C.active=v.w||null;else if(id==='foods')C.foods=v.list||[];else if(id.startsWith('wk_'))C.workouts.push(...(v.list||[]));else if(id.startsWith('fd_'))Object.assign(C.food,v.days||{})}
+  C.workouts.sort((a,b)=>a.start-b.start);return C}
+function localSave(){if(storeMode!=='idb'){lsSaveAll();return}clearTimeout(saveT);saveT=setTimeout(storeFlush,300)}
+function storeFlush(){clearTimeout(saveT);saveT=null;if(storeMode!=='idb'||!dataDB)return Promise.resolve(0);const ch=[];
+  for(const k of docKeys()){const j=JSON.stringify(docFor(k));if(lastDoc[k]!==j)ch.push([k,j])}if(!ch.length)return Promise.resolve(0);
+  return new Promise(res=>{try{const tx=dataDB.transaction('docs','readwrite'),os=tx.objectStore('docs');for(const [k,j] of ch)os.put(j,k);
+    tx.oncomplete=()=>{for(const [k,j] of ch)lastDoc[k]=j;res(ch.length)};tx.onerror=tx.onabort=()=>{toast('Could not save on this device. It may be out of space. Export a backup.');res(-1)}}catch(e){res(-1)}})}
+function storeAll(){return new Promise(res=>{try{const out={},rq=dataDB.transaction('docs').objectStore('docs').openCursor();rq.onsuccess=()=>{const c=rq.result;if(c){out[c.key]=c.value;c.continue()}else res(out)};rq.onerror=()=>res(null)}catch(e){res(null)}})}
+async function storeLoad(){dataDB=await dbOpen();const all=dataDB?await storeAll():null;
+  if(!all){storeMode='ls';dataDB=null;lsLoad();return}
+  storeMode='idb';const keys=Object.keys(all);
+  if(keys.length){const m={};for(const k of keys){try{m[k]=JSON.parse(all[k])}catch(e){}}lastDoc=Object.assign({},all);const C=fromDocs(m);
+    S=Object.assign(S,{settings:Object.assign({unit:'kg',sex:'male',rest:120},C.settings||{}),custom:C.custom,routines:C.routines,weights:C.weights,workouts:C.workouts,active:C.active,food:C.food,foods:C.foods});
+    /* the old copy was kept for one start after moving across; this start loaded fine, so it can go */
+    if(lsGet('.moved')){try{localStorage.removeItem(LS)}catch(e){}lsDel('.moved')}}
+  else{lsLoad();if(localStorage.getItem(LS)){const n=await storeFlush();if(n>0)lsSet('.moved',String(Date.now()));else{storeMode='ls'}}}
+  if(!S.food)S.food={};if(!S.foods)S.foods=[]}
+function localLoad(){lsLoad()}
+addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')storeFlush()});addEventListener('pagehide',()=>{storeFlush()});
 function unsynced(){try{return JSON.parse(localStorage.getItem(LS+'.unsynced')||'[]')}catch(e){return[]}}
 function markUnsynced(k,on){try{const s=new Set(unsynced());on?s.add(k):s.delete(k);localStorage.setItem(LS+'.unsynced',JSON.stringify([...s]))}catch(e){}}
 const clone=o=>JSON.parse(JSON.stringify(o));
@@ -436,7 +465,7 @@ async function vaultOn(){const pw=($('#vault-pw')||{}).value;if(!pw){toast('Ente
   try{await vaultOpen(pw);toast('Photo encryption is on.')}catch(e){toast('Could not switch on encryption. Try again.')}}
 async function wipeLocal(){S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};for(const k of Object.keys(phCache))delete phCache[k];
   try{Object.keys(localStorage).filter(k=>k.startsWith(LS)&&k!==LS+'.loginAsked').forEach(k=>localStorage.removeItem(k))}catch(e){}
-  try{await idbDo('readwrite',s=>s.clear())}catch(e){}try{await idbDo('readwrite',s=>s.clear(),'keys')}catch(e){}knownMonths=new Set()}
+  try{await idbDo('readwrite',s=>s.clear())}catch(e){}try{await idbDo('readwrite',s=>s.clear(),'keys')}catch(e){}clearTimeout(saveT);lastDoc={};try{if(dataDB)await new Promise(r=>{const tx=dataDB.transaction('docs','readwrite');tx.objectStore('docs').clear();tx.oncomplete=tx.onerror=r})}catch(e){}knownMonths=new Set()}
 async function deleteAccount(){const pw=($('#del-pw')||{}).value;if(!pw){toast('Enter your password to confirm.');return}
   try{await reauth(pw)}catch(e){toast(AUTHMSG[e&&e.code]||'That password did not match.');return}
   toast('Deleting…');const F=fb.F,uid=fbUser.uid;
@@ -1073,7 +1102,8 @@ vfix();['resize','orientationchange','pageshow','focus'].forEach(t=>addEventList
 document.addEventListener('visibilitychange',()=>{vfix();setTimeout(vfix,350)});document.addEventListener('focusout',()=>setTimeout(vfix,400));
 if(window.visualViewport)visualViewport.addEventListener('resize',()=>setTimeout(vfix,50));
 setInterval(()=>{if(!document.hidden)vfix()},1000);
-uiApply();localLoad();migrate();buildDemo();buildNav();go(tab);initGestures();if(typeof welcomeBoot==='function')welcomeBoot();if(typeof notesBoot==='function')notesBoot();if(typeof backupBoot==='function')backupBoot();if(pinGet())lockShow();initCloud();
+uiApply();if(pinGet())lockShow();
+storeLoad().catch(()=>{storeMode='ls';lsLoad()}).then(()=>{migrate();buildDemo();buildNav();go(tab);initGestures();if(typeof welcomeBoot==='function')welcomeBoot();if(typeof notesBoot==='function')notesBoot();if(typeof backupBoot==='function')backupBoot();initCloud()});
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(location.protocol==='https:')setTimeout(()=>checkUpdate(false),2500);
 </script>
