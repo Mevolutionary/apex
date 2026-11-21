@@ -310,7 +310,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.65';
+const LB=2.20462, DAY=864e5, VERSION='0.66';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -396,8 +396,9 @@ function save(...keys){localSave();for(const k of keys){if(k==='active'){markUns
 function saveAll(){localSave();const months=new Set(S.workouts.map(w=>monthKey(w.start)));Object.keys(S.food).forEach(d=>months.add('fd_'+d.slice(0,7)));knownMonths.forEach(m=>months.add(m));['settings','weights','active','foods',...months].forEach(cloudPut)}
 const hasLocal=()=>!isEmpty()||S.custom.length>0||S.routines.length>0||Object.keys(S.food).length>0||S.foods.length>0;
 async function initCloud(){if(!CFG){cloudState='off';return}
-  try{const v='https://www.gstatic.com/firebasejs/10.12.2/';
-    const [A,U,F]=await Promise.all([import(v+'firebase-app.js'),import(v+'firebase-auth.js'),import(v+'firebase-firestore.js')]);
+  /* A6: current Firebase (13.4.0). If it cannot be loaded for any reason, the previous version that is known to work is used instead. */
+  const load=v=>Promise.all([import('https://www.gstatic.com/firebasejs/'+v+'/firebase-app.js'),import('https://www.gstatic.com/firebasejs/'+v+'/firebase-auth.js'),import('https://www.gstatic.com/firebasejs/'+v+'/firebase-firestore.js')]).then(m=>{window.fbVersion=v;return m});
+  try{const [A,U,F]=await load('13.4.0').catch(()=>load('10.12.2'));
     const app=A.initializeApp(CFG);fb={auth:U.getAuth(app),db:F.getFirestore(app),U,F};
     U.onAuthStateChanged(fb.auth,u=>{fbUser=u;cloudReady=false;isOwner=false;vaultKey=null;if(u){vaultLocal(u.uid).then(k=>{if(k&&!vaultKey&&fbUser&&fbUser.uid===u.uid){vaultKey=k;phFlush();refreshSettings()}});pull()}else{cloudState='signedout';refreshSettings();if(tab==='home')render();maybeAskLogin()}})
   }catch(e){cloudState='error';refreshSettings()}}

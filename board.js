@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.66',['Updated the sign-in and sync library to its latest version']],
   ['0.65',['The barcode scanner is now part of the app, a quarter of the size, and works with no signal']],
   ['0.64',['Checking for updates now downloads a few bytes instead of the whole app']],
   ['0.63',['Ticking a set is quicker: only that row updates']],
