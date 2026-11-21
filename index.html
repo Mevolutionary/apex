@@ -67,28 +67,28 @@ body.still .field i,body:has(#scrim.on) .field i,body:has(#lock.on) .field i{ani
 .field i:nth-child(3){inset:0;background:radial-gradient(130% 90% at 50% 10%,transparent 45%,rgba(3,4,10,.72))}
 @keyframes driftA{to{transform:translate(9%,7%) rotate(10deg) scale(1.12)}}
 @keyframes driftB{to{transform:translate(-8%,-6%) rotate(-12deg) scale(1.18)}}
-@keyframes in{from{opacity:0;transform:translateY(40px) scale(.93)}30%{opacity:1}}
+@keyframes in{from{opacity:0;transform:scale(.97)}}
 @keyframes grow{from{transform:scaleX(0)}}
 @keyframes pop{40%{transform:scale(1.25)}}
 @keyframes fade{from{opacity:0}}
-@keyframes inR{from{opacity:0;transform:translateX(90px) scale(.96)}30%{opacity:1}}
-@keyframes inL{from{opacity:0;transform:translateX(-90px) scale(.96)}30%{opacity:1}}
-@keyframes out{to{opacity:0;transform:scale(.94)}}
-@keyframes outL{to{opacity:0;transform:translateX(-70px) scale(.96)}}
-@keyframes outR{to{opacity:0;transform:translateX(70px) scale(.96)}}
-.ghost{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;animation:out .3s cubic-bezier(.23,1,.32,1) both}
+@keyframes inR{from{opacity:0;transform:translateX(24px) scale(.97)}}
+@keyframes inL{from{opacity:0;transform:translateX(-24px) scale(.97)}}
+@keyframes out{to{opacity:0;transform:scale(.98)}}
+@keyframes outL{to{opacity:0;transform:translateX(-24px) scale(.98)}}
+@keyframes outR{to{opacity:0;transform:translateX(24px) scale(.98)}}
+.ghost{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;animation:out .16s cubic-bezier(.23,1,.32,1) both}
 .ghost.r{animation-name:outL}.ghost.l{animation-name:outR}
-main.enter>*{animation:in .8s .02s cubic-bezier(.2,1.22,.32,1) both}
+main.enter>*{animation:in .22s cubic-bezier(.23,1,.32,1) both}
 @keyframes ringin{from{stroke-dasharray:0 290}}
-@keyframes emblemin{from{opacity:0;transform:scale(.5) rotate(-18deg)}60%{transform:scale(1.12) rotate(4deg)}}
-main.enter .ring circle+circle{animation:ringin 1.2s .3s cubic-bezier(.2,.9,.3,1) both}
-main.enter .emblem{animation:emblemin .8s .25s cubic-bezier(.2,1.2,.3,1) both;transform-origin:50% 50%}
+@keyframes emblemin{from{opacity:0;transform:scale(.97)}}
+main.enter .ring circle+circle{animation:ringin .28s cubic-bezier(.23,1,.32,1) both}
+main.enter .emblem{animation:emblemin .22s cubic-bezier(.23,1,.32,1) both;transform-origin:50% 50%}
 .tap{transition:transform .3s cubic-bezier(.3,1.7,.5,1)}.tap:active{transform:scale(.975);transition-duration:.08s}
 main.enter.r>*{animation-name:inR}main.enter.l>*{animation-name:inL}
 nav{touch-action:none;-webkit-user-select:none;user-select:none}
-main.enter>*:nth-child(2){animation-delay:.05s}main.enter>*:nth-child(3){animation-delay:.08s}main.enter>*:nth-child(4){animation-delay:.11s}main.enter>*:nth-child(5){animation-delay:.14s}main.enter>*:nth-child(n+6){animation-delay:.17s}
+main.enter>*:nth-child(2){animation-delay:.012s}main.enter>*:nth-child(3){animation-delay:.024s}main.enter>*:nth-child(4){animation-delay:.036s}main.enter>*:nth-child(5){animation-delay:.044s}main.enter>*:nth-child(n+6){animation-delay:.05s}
 main.enter>*:nth-child(n+9){animation:none}
-main.enter .track i{animation:grow 1.15s .3s cubic-bezier(.16,1,.3,1) both;transform-origin:left}
+main.enter .track i{animation:grow .28s cubic-bezier(.23,1,.32,1) both;transform-origin:left}
 .check.pop{animation:pop .42s cubic-bezier(.3,1.4,.5,1)}
 #scrim.opening{animation:fade .32s}
 #scrim.closing{opacity:0;transition:opacity .28s}
@@ -179,7 +179,7 @@ nav .di{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;pad
 nav .di svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 nav .di{cursor:pointer;position:relative;z-index:1;transition:color .25s,transform .12s}nav .di:active{transform:scale(.92)}
 nav .di.on{color:var(--ink)}
-nav .ind{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/var(--n,5));border-radius:999px;background:rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 14px rgba(0,0,0,.2);transition:transform .58s cubic-bezier(.3,1.3,.45,1),opacity .3s}
+nav .ind{position:absolute;top:6px;bottom:6px;left:6px;width:calc((100% - 12px)/var(--n,5));border-radius:999px;background:rgba(255,255,255,.17);box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 4px 14px rgba(0,0,0,.2);transition:transform .28s cubic-bezier(.23,1,.32,1),opacity .2s cubic-bezier(.23,1,.32,1)}
 nav .grab{position:absolute;top:-38px;left:50%;transform:translateX(-50%);width:72px;height:44px;flex:none;padding:0;z-index:2}
 nav .grab::after{content:'';position:absolute;left:50%;top:28px;width:36px;height:4px;margin-left:-18px;border-radius:9px;background:rgba(255,255,255,.38)}
 nav .grab:active{transform:translateX(-50%)}
@@ -310,7 +310,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.66';
+const LB=2.20462, DAY=864e5, VERSION='0.67';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -742,7 +742,7 @@ function saveWeigh(val,d,hasPhoto){const old=S.weights.find(w=>w.d===d),e={d,kg:
 function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body,food,coach,studies,board:typeof boardScreen==='function'?boardScreen:home,progress:typeof progressScreen==='function'?progressScreen:home,ask:typeof askScreen==='function'?askScreen:home})[tab]());tick();if(tab==='body')fillPhotos()}
 function go(t){const dk=dock().filter(id=>ITEMS[id].kind==='screen'),O=dk.includes(tab)&&dk.includes(t)?dk:SCREENS,ix=k=>O.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
   /* leave a copy of the old screen behind for a moment so it can fade and slide away while the new one arrives */
-  try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),320)}}catch(e){}
+  try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),180)}}catch(e){}
   tab=t;render();v.scrollTop=0;v.classList.remove('enter','l','r');void v.offsetWidth;v.classList.add('enter');if(dir)v.classList.add(dir);countUp(v)}
 
 /* ================= sheets ================= */
@@ -779,8 +779,8 @@ function sheetIntro(from){const sh=$('#sheet');if(calm()||!sh.animate)return;con
   else{sh.animate([{transform:'translateY(140px) scale(.88)',opacity:0},{transform:'none',opacity:1}],{duration:600,easing:'cubic-bezier(.2,1.28,.3,1)'});contentIntro(sh,120)}
   countUp(sh)}
 /* Whole numbers in stat tiles count up from zero when they appear. */
-function countUp(root){if(calm())return;root.querySelectorAll('.tile b').forEach(el=>{const m=/^(\d+(?:\.\d+)?)(k?)$/.exec(el.textContent.trim());if(!m||+m[1]===0)return;const end=+m[1],dec=(m[1].split('.')[1]||'').length,t0=performance.now()+200;
-    const step=t=>{const p=Math.max(0,Math.min(1,(t-t0)/800)),e=1-Math.pow(1-p,3);el.textContent=(end*e).toFixed(dec)+m[2];if(p<1&&el.isConnected)requestAnimationFrame(step);else el.textContent=m[1]+m[2]};el.textContent=(0).toFixed(dec)+m[2];requestAnimationFrame(step)})}
+function countUp(root){if(calm())return;root.querySelectorAll('.tile b').forEach(el=>{const m=/^(\d+(?:\.\d+)?)(k?)$/.exec(el.textContent.trim());if(!m||+m[1]===0)return;const end=+m[1],dec=(m[1].split('.')[1]||'').length,t0=performance.now();
+    const step=t=>{const p=Math.max(0,Math.min(1,(t-t0)/280)),e=1-Math.pow(1-p,3);el.textContent=(end*e).toFixed(dec)+m[2];if(p<1&&el.isConnected)requestAnimationFrame(step);else el.textContent=m[1]+m[2]};el.textContent=(0).toFixed(dec)+m[2];requestAnimationFrame(step)})}
 function openSheet(html,kind){runCleanup();if(pushMode){pushMode=false;const sc0=$('#scrim');if(sc0.classList.contains('on')&&!sc0.classList.contains('closing')){pushSheet(html,kind);return}}
   clearStack();const sh=$('#sheet'),sc=$('#scrim'),same=sc.classList.contains('on')&&!sc.classList.contains('closing')&&sh.dataset.kind===(kind||'')&&!!kind;
   const wasOpen=sc.classList.contains('on')&&!sc.classList.contains('closing');clearTimeout(SH.timer);sc.classList.remove('closing');if(!same){SH.full=false;if(!wasOpen)sh.dataset.h=''}
