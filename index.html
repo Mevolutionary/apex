@@ -319,7 +319,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.71';
+const LB=2.20462, DAY=864e5, VERSION='0.72';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -351,9 +351,21 @@ function bwAt(t){const ws=V().weights;if(!ws.length)return 0;if(t==null)t=Date.n
   const d=ymd(t),c=bwAtCache;let lo=0,hi=c.d.length-1,k=-1;while(lo<=hi){const m=(lo+hi)>>1;if(c.d[m]<=d){k=m;lo=m+1}else hi=m-1}return c.v[k<0?0:k]}
 function score(ex,set,at){const load=(set.w||0)+(ex.bw?bwAt(at):0);return load>0?e1rm(load,set.r||0):(set.r||0)/100}
 function bestOf(list,exId){let b=null;const ex=exById(exId);for(const w of list)for(const e of w.exercises)if(e.exId===exId)for(const s of e.sets){const sc=score(ex,s,w.start);if(!b||sc>b.sc)b={sc,w:s.w||0,r:s.r,at:w.start}}return b}
-function recomputePRs(list){list.sort((a,b)=>a.start-b.start);const best={};for(const w of list){w.prs=[];for(const e of w.exercises){const ex=exById(e.exId);let sc=0,wt=0;for(const s of e.sets){sc=Math.max(sc,score(ex,s,w.start));wt=Math.max(wt,s.w||0)}
-  const b=best[e.exId];if(b){if(sc>b.sc+1e-6)w.prs.push({exId:e.exId,type:'Est. 1RM',kg:sc});else if(wt>b.wt+1e-6)w.prs.push({exId:e.exId,type:'Heaviest',kg:wt})}
-  best[e.exId]={sc:Math.max(sc,b?b.sc:0),wt:Math.max(wt,b?b.wt:0)}}}}
+/* PRs per lift, at most one per lift per workout, most important first:
+   Est. 1RM, Heaviest, Reps (more reps than ever at that weight or heavier), Best set (weight x reps), Session volume (A19). */
+function recomputePRs(list){list.sort((a,b)=>a.start-b.start);const best={};for(const w of list){w.prs=[];for(const e of w.exercises){const ex=exById(e.exId);let sc=0,wt=0,sv=0,tv=0;const reps={};
+  for(const s of e.sets){sc=Math.max(sc,score(ex,s,w.start));wt=Math.max(wt,s.w||0);const v=(s.w||0)*(s.r||0);sv=Math.max(sv,v);tv+=v;const k=+(s.w||0);reps[k]=Math.max(reps[k]||0,s.r||0)}
+  const b=best[e.exId];if(b){let rp=null;
+    /* a rep PR needs more reps than any earlier set at this weight or heavier */
+    for(const k of Object.keys(reps).map(Number).sort((x,y)=>y-x)){const prev=Object.keys(b.reps).map(Number).filter(x=>x>=k-1e-9).reduce((a,x)=>Math.max(a,b.reps[x]),0);if(prev>0&&reps[k]>prev&&reps[k]>=2){rp={kg:k,r:reps[k]};break}}
+    if(sc>b.sc+1e-6)w.prs.push({exId:e.exId,type:'Est. 1RM',kg:sc});else if(wt>b.wt+1e-6)w.prs.push({exId:e.exId,type:'Heaviest',kg:wt});
+    else if(rp)w.prs.push({exId:e.exId,type:'Reps',kg:rp.kg,r:rp.r});
+    else if(sv>b.sv+1e-6&&sv>0)w.prs.push({exId:e.exId,type:'Best set',kg:sv,vol:1});
+    else if(tv>b.tv+1e-6&&tv>0&&e.sets.length>1)w.prs.push({exId:e.exId,type:'Session volume',kg:tv,vol:1})}
+  const nr=Object.assign({},b?b.reps:{});for(const k in reps)nr[k]=Math.max(nr[k]||0,reps[k]);
+  best[e.exId]={sc:Math.max(sc,b?b.sc:0),wt:Math.max(wt,b?b.wt:0),sv:Math.max(sv,b?b.sv:0),tv:Math.max(tv,b?b.tv:0),reps:nr}}}}
+/* how a PR's number reads: "82.5 kg", "60 kg × 12" or "2.4k kg" */
+const prVal=p=>p.type==='Reps'?(p.kg>0?disp(p.kg)+' '+unit()+' × '+p.r:p.r+' reps'):p.vol?big(p.kg)+' '+unit():disp(p.kg)+' '+unit();
 const volume=w=>w.exercises.reduce((a,e)=>a+e.sets.reduce((x,s)=>x+(s.w||0)*(s.r||0),0),0);
 const setCount=w=>w.exercises.reduce((a,e)=>a+e.sets.length,0);
 
@@ -535,8 +547,13 @@ window.addEventListener('online',()=>pull());
 
 /* ================= ranks ================= */
 function thresholds(id){const t=STD[id];if(S.settings.sex!=='female')return t;return id==='pullup'?t.map(x=>1+(x-1)*.6):t.map(x=>x*FEM[id])}
-function rankFor(id){const bw=bwNow(),b=bestOf(V().workouts,id);if(!bw||!b)return null;const ratio=b.sc/bw,t=thresholds(id);let tier=0;while(tier<t.length&&ratio>=t[tier])tier++;
-  const lo=tier?t[tier-1]:0,hi=t[tier];const prog=hi?Math.min(1,Math.max(0,(ratio-lo)/(hi-lo))):1;return{id,tier,prog,ratio,kg:b.sc,nextKg:hi?hi*bw:null}}
+/* A20: plain bodyweight multiples favour lighter lifters, so each lift is scaled with the DOTS bodyweight curve
+   (the one powerlifting federations use) to what it would be at a reference bodyweight, 80 kg for men and 60 kg
+   for women. At that bodyweight nothing changes; lighter lifters need a little more, heavier a little less. */
+const DOTS={male:[-0.000001093,0.0007391293,-0.1918759221,24.0900756,-307.75076,40,210,80],female:[-0.0000010706,0.0005158568,-0.1126655495,13.6175032,-57.96288,40,150,60]};
+function dotsFactor(bw){const c=DOTS[S.settings.sex==='female'?'female':'male'],f=x=>{x=Math.min(c[6],Math.max(c[5],x));return x*500/(c[0]*x**4+c[1]*x**3+c[2]*x**2+c[3]*x+c[4])};return bw>0?f(bw)/f(c[7]):1}
+function rankFor(id){const bw=bwNow(),b=bestOf(V().workouts,id);if(!bw||!b)return null;const k=dotsFactor(bw),ratio=b.sc/bw*k,t=thresholds(id);let tier=0;while(tier<t.length&&ratio>=t[tier])tier++;
+  const lo=tier?t[tier-1]:0,hi=t[tier];const prog=hi?Math.min(1,Math.max(0,(ratio-lo)/(hi-lo))):1;return{id,tier,prog,ratio,plain:b.sc/bw,kg:b.sc,nextKg:hi?hi*bw/k:null}}
 function overall(){const rs=Object.keys(STD).map(rankFor).filter(Boolean);if(!rs.length)return null;const avg=rs.reduce((a,r)=>a+r.tier+(r.tier<6?r.prog:0),0)/rs.length;return{tier:Math.min(6,Math.floor(avg)),prog:avg%1,count:rs.length}}
 function emblem(tier,size){const c=TIERS[tier][1],id='g'+tier+size;return `<svg class="emblem" width="${size}" height="${size}" viewBox="0 0 60 60" aria-hidden="true"><defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="${c}"/><stop offset="1" stop-color="${c}" stop-opacity=".45"/></linearGradient></defs><path d="M30 3 53 16v28L30 57 7 44V16z" fill="url(#${id})" stroke="rgba(255,255,255,.7)" stroke-width="1.5"/><path d="M30 12 45 20.5v19L30 48 15 39.5v-19z" fill="rgba(8,10,22,.55)"/><text x="30" y="36" text-anchor="middle" font-family="ui-rounded,Nunito,sans-serif" font-weight="900" font-size="17" fill="${c}">${TIERS[tier][0][0]}</text></svg>`}
 
@@ -618,7 +635,7 @@ function home(){const d=V(),ws=weekStart(),wk=d.workouts.filter(w=>w.start>=ws),
     <div class="tile"><b>${big(wk.reduce((a,w)=>a+volume(w),0))}</b><span>${unit()} lifted</span></div></div>
     <div class="small muted" style="margin-top:12px">${streak(d.workouts)} week${streak(d.workouts)===1?'':'s'} in a row with at least one workout</div></section>
   <section class="glass card"><h2>Sets per muscle this week</h2>${mlist.length?`<div class="bars">${mlist.map(([m,n])=>`<div class="barrow"><span>${m}</span><div class="track"><i style="width:${n/mmax*100}%"></i></div><span class="num" style="text-align:right">${n}</span></div>`).join('')}</div>`:'<div class="muted small">No sets logged yet this week.</div>'}</section>
-  <section class="glass card"><h2>Recent records</h2>${prs.length?`<div class="list">${prs.map(p=>`<div class="row between tap" data-a="ex" data-v="${esc(p.exId)}"><div><div style="font-weight:600">${esc(exById(p.exId).name)}</div><div class="small muted">${p.type} · ${niceDate(p.at)}</div></div><div class="row"><span class="num" style="font-weight:800">${disp(p.kg)} ${unit()}</span><span class="pr">PR</span></div></div>`).join('')}</div>`:'<div class="muted small">Records appear here when you beat a previous best.</div>'}</section>`}
+  <section class="glass card"><h2>Recent records</h2>${prs.length?`<div class="list">${prs.map(p=>`<div class="row between tap" data-a="ex" data-v="${esc(p.exId)}"><div><div style="font-weight:600">${esc(exById(p.exId).name)}</div><div class="small muted">${p.type} · ${niceDate(p.at)}</div></div><div class="row"><span class="num" style="font-weight:800">${prVal(p)}</span><span class="pr">PR</span></div></div>`).join('')}</div>`:'<div class="muted small">Records appear here when you beat a previous best.</div>'}</section>`}
 
 /* A routine opened from the Train tab: everything in it, what you did last time, and the choice to start. */
 function routineSheet(id){const r=S.routines.find(x=>x.id===id);if(!r)return;
@@ -644,11 +661,11 @@ function train(){const a=S.active;if(!a){const last=S.workouts[S.workouts.length
     return `${linked?'<div class="sslink">Superset</div>':''}<section class="glass card ex ${e.ss||linked?'ss':''}"><div class="row between"><div><h3>${esc(ex.name)}</h3><div class="small muted">${ex.muscle}${ex.bw?' · bodyweight, enter added weight':''}</div></div><button class="btn sm danger" data-a="rm-ex" data-x="${i}">Remove</button></div>
     <div class="exmeta"><button class="chip" data-a="ex-rest" data-x="${i}">Rest ${restLabel(e.exId)}</button><button class="chip" data-a="ex-swap" data-x="${i}">Swap</button><button class="chip" data-a="ex-warm" data-x="${i}">Warm-up</button>${i>0?`<button class="chip" data-a="ex-up" data-x="${i}" aria-label="Move ${esc(ex.name)} earlier">↑</button>`:''}${i<a.exercises.length-1?`<button class="chip" data-a="ex-down" data-x="${i}" aria-label="Move ${esc(ex.name)} later">↓</button>`:''}${i<a.exercises.length-1?`<button class="chip ${e.ss?'on':''}" data-a="ex-ss" data-x="${i}">Superset with next</button>`:''}</div>
     <input type="text" class="exnote" data-i="exnote" data-v="${esc(e.exId)}" value="${esc((S.settings.exNotes||{})[e.exId]||'')}" placeholder="Note for this exercise (seat height, cues)" aria-label="Note for ${esc(ex.name)}" maxlength="140">
-    <div class="sets"><span class="h">Set</span><span class="h">Last time</span><span class="h">${ex.bw?'+'+unit():unit()}</span><span class="h">Reps</span><span class="h">Done</span>
+    <div class="sets${typeof rirOn==='function'&&rirOn()?' rir':''}"><span class="h">Set</span><span class="h">${typeof rirOn==='function'&&rirOn()?'Last':'Last time'}</span><span class="h">${ex.bw?'+'+unit():unit()}</span><span class="h">Reps</span>${typeof rirOn==='function'&&rirOn()?'<span class="h">RIR</span>':''}<span class="h">Done</span>
     ${e.sets.map((s,j)=>{const p=prevFor(pe,e.sets,j),isPr=s.t!=='w'&&s.done&&best&&score(ex,s)>best.sc+1e-6,lab=s.t?SETT[s.t][0]:++wn;if(s.t&&s.t!=='w')wn++;
       return `<button class="n ${s.t?'t'+s.t:''}" data-a="set-type" data-x="${i}" data-s="${j}" aria-label="Set ${j+1}, ${s.t?SETT[s.t][1]:'normal set'}. Tap to change type">${isPr?'<span class="pr">PR</span>':lab}</button><span class="prev">${p?disp(p.w||0)+' × '+p.r:'—'}</span>
       <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" step="any" id="w-${i}-${j}" data-i="set" data-x="${i}" data-s="${j}" data-f="w" value="${disp(s.w)}" placeholder="${p?disp(p.w||0):'0'}" aria-label="Weight, set ${j+1}"></span>
-      <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" id="r-${i}-${j}" data-i="set" data-x="${i}" data-s="${j}" data-f="r" value="${s.r??''}" placeholder="${p?p.r:'0'}" aria-label="Reps, set ${j+1}"></span>
+      <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" id="r-${i}-${j}" data-i="set" data-x="${i}" data-s="${j}" data-f="r" value="${s.r??''}" placeholder="${p?p.r:'0'}" aria-label="Reps, set ${j+1}"></span>${typeof rirCell==='function'?rirCell(s,i,j):''}
       <div role="button" tabindex="0" class="check ${s.done?'on':''}" data-a="check" data-x="${i}" data-s="${j}" aria-label="Mark set ${j+1} done" aria-pressed="${!!s.done}"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>${HX}</div>`}).join('')}</div>
     <div class="row" style="margin-top:12px"><button class="btn sm" style="flex:1" data-a="add-set" data-x="${i}">Add set</button>${e.sets.length>1?`<button class="btn sm" data-a="rm-set" data-x="${i}">Remove last</button>`:''}</div></section>`}).join('')}
   ${(a.cardio||[]).length?`<section class="glass card"><h3 style="font-size:17px;font-weight:800">Cardio</h3><div class="list" style="margin-top:10px">${a.cardio.map((c,i)=>`<div class="row between"><span>${esc(c.type)} <span class="small muted">${c.mins} min${c.km?' · '+(S.settings.unit==='lb'?Math.round(c.km/1.609*10)/10+' mi':c.km+' km'):''}</span></span><button class="btn sm danger" data-a="cardio-rm" data-x="${i}">Remove</button></div>`).join('')}</div></section>`:''}
@@ -692,9 +709,9 @@ function exSheet(id){const ex=exById(id),ses=[];
     <div class="tile"><div style="font-weight:800;margin-bottom:8px">Estimated 1RM over time <button class="info" data-a="info" data-v="ranks">How it is estimated</button></div>${lineChart(ses.map(s=>({t:s.t,v:s.sc})))}<div class="small muted" style="margin-top:6px">White dot is your latest session, gold is your best.</div></div>
     <div class="tile"><div style="font-weight:800;margin-bottom:6px">What the numbers say</div>${ins.map(t=>`<div class="small" style="margin-top:4px">${t}</div>`).join('')}</div>
     ${rm.length?`<div class="tile"><div style="font-weight:800;margin-bottom:8px">Best weight by reps</div><div class="ladder">${rm.map(x=>`<span class="got" style="color:var(--ink)">${x[0]}+ reps · ${disp(x[1])} ${u}</span>`).join('')}</div></div>`:''}
-    ${prs.length?`<div class="tile"><div style="font-weight:800;margin-bottom:4px">Records</div><div class="list">${prs.map(p=>`<div class="row between small"><span>${niceDate(p.t)} · ${p.type}</span><span class="num" style="font-weight:700">${disp(p.kg)} ${u}</span></div>`).join('')}</div></div>`:''}
+    ${prs.length?`<div class="tile"><div style="font-weight:800;margin-bottom:4px">Records</div><div class="list">${prs.map(p=>`<div class="row between small"><span>${niceDate(p.t)} · ${p.type}</span><span class="num" style="font-weight:700">${prVal(p)}</span></div>`).join('')}</div></div>`:''}
     <div class="tile"><div style="font-weight:800;margin-bottom:4px">Recent sessions</div><div class="list">${ses.slice(-5).reverse().map(s=>`<div class="small"><div>${niceDate(s.t)}</div><div class="muted num">${s.sets.map(x=>disp(x.w||0)+' × '+x.r).join('   ·   ')}</div></div>`).join('')}</div></div>`}
-  const ladder=STD[id]?`<div class="tile"><div class="row" style="gap:12px;margin-bottom:10px">${emblem(r?r.tier:0,44)}<div><div class="num" style="font-weight:900;font-size:18px;color:${r?TIERS[r.tier][1]:'var(--ink-3)'}">${r?TIERS[r.tier][0]:'Unranked'}</div><div class="small muted">${r?r.ratio.toFixed(2)+'× bodyweight'+(r.nextKg?' · '+disp(r.nextKg-r.kg)+' '+u+' to '+TIERS[r.tier+1][0]:''):bw?'Log a set to get a rank':'Log your bodyweight to get a rank'}</div></div></div>
+  const ladder=STD[id]?`<div class="tile"><div class="row" style="gap:12px;margin-bottom:10px">${emblem(r?r.tier:0,44)}<div><div class="num" style="font-weight:900;font-size:18px;color:${r?TIERS[r.tier][1]:'var(--ink-3)'}">${r?TIERS[r.tier][0]:'Unranked'}</div><div class="small muted">${r?r.plain.toFixed(2)+'× bodyweight'+(r.nextKg?' · '+disp(r.nextKg-r.kg)+' '+u+' to '+TIERS[r.tier+1][0]:''):bw?'Log a set to get a rank':'Log your bodyweight to get a rank'}</div></div></div>
     ${bw?`<div class="ladder">${thresholds(id).map((t,i)=>`<span class="${r&&r.tier>i?'got':''}" style="${r&&r.tier>i?'color:'+TIERS[i+1][1]:''}">${TIERS[i+1][0]} ${disp(t*bw)}</span>`).join('')}</div><div class="small muted" style="margin-top:8px">Estimated 1RM needed for each tier at ${disp(bw)} ${u} bodyweight.</div>`:''}</div>`:'';
   openSheet(`<h2 style="margin-bottom:2px">${esc(ex.name)}</h2><p class="small">${ex.muscle}${ses.length?' · first logged '+niceDate(ses[0].t):''}</p><div class="stack">${typeof cueTile==='function'?cueTile(id):''}${ladder}${body}</div>`,'ex')}
 
@@ -704,7 +721,7 @@ function ranks(){const bw=bwNow(),o=overall();
   <section class="glass card"><div class="row" style="gap:16px">${emblem(o?o.tier:0,64)}<div><div class="small muted">Overall</div><div class="num" style="font-size:26px;font-weight:900">${o?TIERS[o.tier][0]:'Unranked'}</div><div class="small muted">At ${disp(bw)||'—'} ${unit()} bodyweight</div></div></div></section>
   ${Object.keys(STD).map(id=>{const r=rankFor(id),ex=exById(id);
     return `<section class="glass card tap" role="button" tabindex="0" data-a="ex" data-v="${id}"><div class="rankrow">${emblem(r?r.tier:0,52)}<div><div class="row between"><h3 style="font-size:16px;font-weight:800">${ex.name}</h3><span class="num" style="font-weight:800;color:${r?TIERS[r.tier][1]:'var(--ink-3)'}">${r?TIERS[r.tier][0]:'Not logged'}</span></div>
-    ${r?`<div class="track" style="margin:8px 0 6px"><i style="width:${Math.round(r.prog*100)}%"></i></div><div class="small muted num">Est. 1RM ${disp(r.kg)} ${unit()} · ${r.ratio.toFixed(2)}× bodyweight</div>${r.nextKg?`<div class="small muted num" style="margin-top:2px">${TIERS[r.tier+1][0]} at ${disp(r.nextKg)} ${unit()}</div>`:''}`:`<div class="small muted" style="margin-top:4px">Log a set to rank this lift.</div>`}</div></div></section>`}).join('')}
+    ${r?`<div class="track" style="margin:8px 0 6px"><i style="width:${Math.round(r.prog*100)}%"></i></div><div class="small muted num">Est. 1RM ${disp(r.kg)} ${unit()} · ${r.plain.toFixed(2)}× bodyweight</div>${r.nextKg?`<div class="small muted num" style="margin-top:2px">${TIERS[r.tier+1][0]} at ${disp(r.nextKg)} ${unit()}</div>`:''}`:`<div class="small muted" style="margin-top:4px">Log a set to rank this lift.</div>`}</div></div></section>`}).join('')}
   <section class="glass card"><h2>Tiers</h2><div class="row wrap">${TIERS.map((t,i)=>`<span class="chip" style="color:${t[1]}">${t[0]}</span>`).join('')}</div></section>`}
 
 function trend(list){let t=null;return list.map(w=>{t=t==null?w.kg:t+.1*(w.kg-t);return t})}
@@ -725,7 +742,7 @@ function body(){const l=V().weights,tr=trend(l),cur=l[l.length-1],tnow=tr[tr.len
   <section class="glass card"><div class="row between" style="align-items:flex-end"><div><div class="small muted">Trend weight</div><div class="num" style="font-size:44px;font-weight:900;line-height:1">${cur?disp(tnow):'—'}<span style="font-size:18px;color:var(--ink-2)"> ${unit()}</span></div></div><div class="small muted" style="text-align:right">Last weigh-in<br><span class="num" style="color:var(--ink);font-weight:700">${cur?disp(cur.kg)+' '+unit():'—'}</span></div></div>
     <div style="margin-top:14px">${chart(l)}</div>
     <div class="grid3" style="margin-top:12px"><div class="tile"><b style="font-size:18px">${ch(ago(7))}</b><span>7 days</span></div><div class="tile"><b style="font-size:18px">${ch(ago(30))}</b><span>30 days</span></div><div class="tile"><b style="font-size:18px">${l.length}</b><span>weigh-ins</span></div></div></section>
-  <section class="glass card"><h2>Log a weigh-in</h2><div class="row" style="align-items:flex-end"><label class="f" style="flex:1">Weight (${unit()})<input type="number" inputmode="decimal" step="any" id="bw-val" placeholder="${cur?disp(cur.kg):'0'}"></label><label class="f" style="flex:1">Date<input type="date" id="bw-date" value="${ymd(Date.now())}" max="${ymd(Date.now())}"></label></div><div class="row" style="margin-top:12px"><label class="btn" style="flex:1;padding:0 10px" id="bw-photo-lbl">Save with photo<input type="file" id="bw-photo" accept="image/*" hidden></label><button class="btn primary" style="flex:1;padding:0 10px" data-a="add-weight">Save weigh-in</button></div></section>
+  <section class="glass card"><h2>Log a weigh-in</h2><div class="row" style="align-items:flex-end"><label class="f" style="flex:1">Weight (${unit()})<input type="number" inputmode="decimal" step="any" id="bw-val" placeholder="${cur?disp(cur.kg):'0'}"></label><label class="f" style="flex:1">Date<input type="date" id="bw-date" value="${ymd(Date.now())}" max="${ymd(Date.now())}"></label></div><div class="row" style="margin-top:12px"><label class="btn" style="flex:1;padding:0 10px" id="bw-photo-lbl">Save with photo<input type="file" id="bw-photo" accept="image/*" hidden></label><button class="btn primary" style="flex:1;padding:0 10px" data-a="add-weight">Save weigh-in</button></div>${typeof healthBtn==='function'?healthBtn():''}</section>
   ${typeof bodyExtras==='function'?bodyExtras(l,tr):''}
   ${photoCard(l)}
   ${isEmpty()||!l.length?'':`<section class="glass card"><h2>Entries</h2><div class="list">${l.slice().reverse().slice(0,30).map(w=>`<div class="row between"><span>${niceDate(w.d+'T12:00')}</span><div class="row"><span class="num" style="font-weight:700">${disp(w.kg)} ${unit()}</span>${w.p?`<button class="btn sm" data-a="photo" data-v="${w.d}">Photo</button>`:''}<button class="btn sm danger" data-a="del-weight" data-v="${w.d}" aria-label="Delete weigh-in from ${w.d}">Delete</button></div></div>`).join('')}</div></section>`}`}
@@ -835,7 +852,7 @@ function installGuide(){const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||
   pushSheet(head+`<div class="stack">${and?andSteps:(ios||isApp())?iosSteps:deskSteps}</div><div class="row" style="margin-top:16px"><button class="btn" style="flex:1" data-a="app-share">Share link</button><button class="btn" style="flex:1" data-a="app-copy">Copy link</button></div>`,'guide')}
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),3200)}
 const INFO={
- ranks:`<h2>How ranks work</h2><p>Each ranked lift takes your best set and converts it to an estimated one-rep max: weight × (1 + reps ÷ 30), the Epley formula. A single rep counts as the weight itself.</p><p>That number is divided by your latest bodyweight. The result is compared with a ladder of bodyweight multiples for that lift. For example, a bench press of 1× bodyweight is Gold and 1.5× is Diamond. Pull-ups count your bodyweight plus any added weight.</p><p>Your overall rank is the average across the ranked lifts you have logged. The ladders are approximate, built from commonly used strength standards. They compare you with general lifting benchmarks, since this app has no other users to rank against.</p>`,
+ ranks:`<h2>How ranks work</h2><p>Each ranked lift takes your best set and converts it to an estimated one-rep max: weight × (1 + reps ÷ 30), the Epley formula. A single rep counts as the weight itself. Sets of more than 10 reps count as 10, because the formula overestimates beyond that; those sets still earn rep records.</p><p>That number is compared with your latest bodyweight on a ladder of bodyweight multiples for that lift. For example, at 80 kg a bench press of 1× bodyweight is Gold and 1.5× is Diamond. Pull-ups count your bodyweight on the day plus any added weight.</p><p>Bigger people can lift more but not in proportion to their weight, so plain multiples would favour lighter lifters. Apex evens this out with the DOTS formula used in powerlifting: it scales each lift to a reference bodyweight (80 kg for men, 60 kg for women). Lighter lifters need a slightly higher multiple for the same rank and heavier lifters a slightly lower one. The "next rank at" weights already include this.</p><p>Your overall rank is the average across the ranked lifts you have logged. The ladders are approximate, built from commonly used strength standards. They compare you with general lifting benchmarks, since this app has no other users to rank against.</p>`,
  trend:`<h2>How trend weight works</h2><p>Daily weight jumps around with water, salt and food. Trend weight smooths that out: each new weigh-in moves the trend 10% of the way toward the new reading.</p><p>The dots on the chart are your actual weigh-ins and the line is the trend. The 7-day and 30-day changes compare the trend now with the trend then, which is a better guide to real change than any single reading.</p>`};
 let setTab='general';
 function settingsSheet(){
@@ -863,8 +880,9 @@ function settingsSheet(){
       <div class="small muted">These five apply to this device only.</div>`})()}`,
     devices:`<div class="tile small row between"><span>Start workouts on Apple Watch<br><span class="muted">${watchOn()?'On for this phone':'Off'}</span></span><button class="btn sm" data-a="watch-guide">${watchOn()?'Options':'Set up'}</button></div>
       <div class="tile small row between"><span>${isApp()?'On your Home Screen':'Add Apex to your Home Screen'}</span><button class="btn sm" data-a="install-guide">${isApp()?'Share':'Show me how'}</button></div>
+      ${typeof healthRow==='function'?healthRow():''}
       ${typeof devicesExtra==='function'?devicesExtra():''}
-      <div class="tile small">Apple Health and other watches cannot connect to a web app directly. The Apple Watch option works through a shortcut.</div>`,
+      <div class="tile small">Apple Health and other watches cannot connect to a web app directly. The Apple Watch and Apple Health options work through shortcuts.</div>`,
     about:`<div class="tile small row between"><span>Apex ${VERSION}</span><button class="btn sm" data-a="check-update">Check for updates</button></div>
       <div class="tile small row between"><span>What changed in each version</span><button class="btn sm" data-a="notes">Patch notes</button></div>
       <div class="tile small row between"><span>Terms of use</span><button class="btn sm" data-a="terms">Read</button></div>
@@ -898,7 +916,7 @@ function platesSheet(v,bar){const lb=unit()==='lb',sizes=lb?[45,35,25,10,5,2.5]:
 /* ================= workout actions ================= */
 function startWorkout(exIds,name){const h=new Date().getHours();S.active={id:uidGen(),name:name||(h<12?'Morning':h<17?'Afternoon':'Evening')+' workout',start:Date.now(),exercises:[]};(exIds||[]).forEach(addExercise);save('active');go('train');if(watchOn())watchFire()}
 function addExercise(id){S.active.exercises.push(exEntry(id))}
-function finish(){const a=S.active;const exs=a.exercises.map(e=>{const done=e.sets.filter(s=>s.done&&s.r>0),o={exId:e.exId,sets:done.filter(s=>s.t!=='w').map(s=>s.t?{w:s.w||0,r:s.r,t:s.t}:{w:s.w||0,r:s.r})},wm=done.filter(s=>s.t==='w').map(s=>({w:s.w||0,r:s.r}));if(wm.length)o.warm=wm;if(e.ss)o.ss=1;return o}).filter(e=>e.sets.length),cardio=(a.cardio||[]).slice();
+function finish(){const a=S.active;const exs=a.exercises.map(e=>{const done=e.sets.filter(s=>s.done&&s.r>0),o={exId:e.exId,sets:done.filter(s=>s.t!=='w').map(s=>{const q=s.t?{w:s.w||0,r:s.r,t:s.t}:{w:s.w||0,r:s.r};if(s.q!=null)q.q=s.q;return q})},wm=done.filter(s=>s.t==='w').map(s=>({w:s.w||0,r:s.r}));if(wm.length)o.warm=wm;if(e.ss)o.ss=1;return o}).filter(e=>e.sets.length),cardio=(a.cardio||[]).slice();
   if(!exs.length&&!cardio.length){toast('Tick at least one working set with reps, or add cardio, before finishing.');return}
   /* note each ranked lift's tier before and after, so the summary can call out a rank going up */
   const tiers=()=>isEmpty()?{}:Object.fromEntries(Object.keys(STD).map(k=>[k,(rankFor(k)||{}).tier])),before=tiers();
@@ -1117,7 +1135,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
-  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof progressAction==='function')progressAction(a,v,b);if(typeof extrasAction==='function')extrasAction(a,v,b);if(typeof moreAction==='function')moreAction(a,v,b);if(typeof welcomeAction==='function')welcomeAction(a,v,b);if(typeof workoutAction==='function')workoutAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
+  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof progressAction==='function')progressAction(a,v,b);if(typeof extrasAction==='function')extrasAction(a,v,b);if(typeof moreAction==='function')moreAction(a,v,b);if(typeof welcomeAction==='function')welcomeAction(a,v,b);if(typeof workoutAction==='function')workoutAction(a,v,b);if(typeof healthAction==='function')healthAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
   }});
 document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
@@ -1133,7 +1151,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 /* ================= boot ================= */
 </script>
 <script>/* the version in the address lets the service worker keep these files and serve them instantly; a new version asks for new addresses */
-['nutrition','meals','coach','summary','studies','board','progress','extras','more','welcome','polish','workout','perf'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
+['nutrition','meals','coach','summary','studies','board','progress','extras','more','welcome','polish','workout','health','perf'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
 <script>
 /* iOS can hand a Home Screen app a page that is shorter than the screen, leaving a dark strip under the dock. Measure the
    shortfall and stretch the page by that much. iOS changes the page height at moments that fire no resize event (coming back
