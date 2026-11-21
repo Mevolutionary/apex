@@ -78,6 +78,14 @@ body.still .field i,body:has(#scrim.on) .field i,body:has(#lock.on) .field i{ani
 @keyframes outR{to{opacity:0;transform:translateX(24px) scale(.98)}}
 .ghost{position:absolute;inset:0;z-index:2;pointer-events:none;overflow:hidden;animation:out .16s cubic-bezier(.23,1,.32,1) both}
 .ghost.r{animation-name:outL}.ghost.l{animation-name:outR}
+/* SOLE exception to the under-300ms screen-change rule (Asher, 22 Nov): a left/right page swipe gets a longer,
+   wider slide so it reads as movement rather than a snap. Taps and dock changes keep the quick version. */
+@keyframes swR{from{opacity:0;transform:translateX(56px)}}
+@keyframes swL{from{opacity:0;transform:translateX(-56px)}}
+@keyframes swOutL{to{opacity:0;transform:translateX(-56px)}}
+@keyframes swOutR{to{opacity:0;transform:translateX(56px)}}
+.ghost.sw{animation-duration:.3s;animation-timing-function:cubic-bezier(.32,.72,0,1)}
+.ghost.sw.r{animation-name:swOutL}.ghost.sw.l{animation-name:swOutR}
 main.enter>*{animation:in .22s cubic-bezier(.23,1,.32,1) both}
 @keyframes ringin{from{stroke-dasharray:0 290}}
 @keyframes emblemin{from{opacity:0;transform:scale(.97)}}
@@ -85,6 +93,7 @@ main.enter .ring circle+circle{animation:ringin .28s cubic-bezier(.23,1,.32,1) b
 main.enter .emblem{animation:emblemin .22s cubic-bezier(.23,1,.32,1) both;transform-origin:50% 50%}
 .tap{transition:transform .3s cubic-bezier(.3,1.7,.5,1)}.tap:active{transform:scale(.975);transition-duration:.08s}
 main.enter.r>*{animation-name:inR}main.enter.l>*{animation-name:inL}
+main.enter.sw>*{animation-duration:.38s;animation-timing-function:cubic-bezier(.32,.72,0,1)}main.enter.sw.r>*{animation-name:swR}main.enter.sw.l>*{animation-name:swL}
 nav{touch-action:none;-webkit-user-select:none;user-select:none}
 main.enter>*:nth-child(2){animation-delay:.012s}main.enter>*:nth-child(3){animation-delay:.024s}main.enter>*:nth-child(4){animation-delay:.036s}main.enter>*:nth-child(5){animation-delay:.044s}main.enter>*:nth-child(n+6){animation-delay:.05s}
 main.enter>*:nth-child(n+9){animation:none}
@@ -310,7 +319,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.69';
+const LB=2.20462, DAY=864e5, VERSION='0.70';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -740,10 +749,10 @@ function compareSheet(){const ph=S.weights.filter(w=>w.p);if(ph.length<2)return;
 function saveWeigh(val,d,hasPhoto){const old=S.weights.find(w=>w.d===d),e={d,kg:Math.round(toKg(val)*100)/100};if(hasPhoto||(old&&old.p))e.p=1;S.weights=S.weights.filter(w=>w.d!==d);S.weights.push(e);S.weights.sort((a,b)=>a.d<b.d?-1:1);save('weights');render()}
 
 function render(){renderNav();const v=$('#view');v.classList.remove('enter','l','r');v.innerHTML=withTicks(({home,train,history,ranks,body,food,coach,studies,board:typeof boardScreen==='function'?boardScreen:home,progress:typeof progressScreen==='function'?progressScreen:home,ask:typeof askScreen==='function'?askScreen:home})[tab]());tick();if(tab==='body')fillPhotos()}
-function go(t){const dk=dock().filter(id=>ITEMS[id].kind==='screen'),O=dk.includes(tab)&&dk.includes(t)?dk:SCREENS,ix=k=>O.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
+function go(t,swipe){const dk=dock().filter(id=>ITEMS[id].kind==='screen'),O=dk.includes(tab)&&dk.includes(t)?dk:SCREENS,ix=k=>O.indexOf(k),o=ix(tab),n=ix(t),v=$('#view'),dir=n>o?'r':n<o?'l':'';
   /* leave a copy of the old screen behind for a moment so it can fade and slide away while the new one arrives */
-  try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir;g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),180)}}catch(e){}
-  tab=t;render();v.scrollTop=0;v.classList.remove('enter','l','r');void v.offsetWidth;v.classList.add('enter');if(dir)v.classList.add(dir);countUp(v)}
+  try{if(v.cloneNode&&v.children&&v.children.length){document.querySelectorAll('.ghost').forEach(g=>g.remove());const g=v.cloneNode(true),top=v.scrollTop;g.removeAttribute('id');g.querySelectorAll('[id]').forEach(e=>e.removeAttribute('id'));g.className='ghost '+dir+(swipe&&dir?' sw':'');g.setAttribute('aria-hidden','true');v.parentNode.appendChild(g);g.scrollTop=top;setTimeout(()=>g.remove(),swipe&&dir?330:180)}}catch(e){}
+  tab=t;render();v.scrollTop=0;v.classList.remove('enter','l','r','sw');void v.offsetWidth;v.classList.add('enter');if(dir)v.classList.add(dir);if(dir&&swipe)v.classList.add('sw');countUp(v)}
 
 /* ================= sheets ================= */
 /* Sheets float above the bottom edge. SH.hN is the resting height (fits the content, up to 62% of the screen); SH.hF is full screen. Pull up for full, pull down or tap outside to dismiss. */
@@ -977,7 +986,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   let sw=null;
   view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input:not(.hx),select,.phstrip,.hscroll')?null:{x:t.clientX,y:t.clientY}},{passive:true});
   view.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;sw=null;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.8)return;
-    const o=swipeOrder(),n=o.indexOf(tab)+(dx<0?1:-1);if(n<0||n>=o.length)return;haptic();go(o[n])},{passive:true});
+    const o=swipeOrder(),n=o.indexOf(tab)+(dx<0?1:-1);if(n<0||n>=o.length)return;haptic();go(o[n],1)},{passive:true});
   /* pull the launcher back down into the dock */
   const la=$('#launch');let ld=null;
   la.addEventListener('touchstart',e=>{ld=L.open?{y:e.touches[0].clientY,h0:lHeight(L.full?2:1),top:$('#linner').scrollTop<=0,on:false,dy:0,v:0,ly:e.touches[0].clientY,lt:Date.now()}:null},{passive:true});
