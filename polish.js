@@ -28,6 +28,8 @@ html.calm.syncing [data-a="settings"]::after{animation:none}
 .skel i:nth-child(1){width:38%}.skel i:nth-child(2){width:92%;height:16px}.skel i:nth-child(3){width:64%}
 @keyframes skel{to{background-position:-200% 0}}
 html.calm .skel i{animation:none}
+/* A8: the drifting background makes every glass panel re-blur each frame, so it is held still for the whole of a workout */
+html.working .field i{animation-play-state:paused}
 `;document.head.appendChild(st)})();
 
 /* ---------- wrong input: shake the field and mark it red, as well as the message ---------- */
@@ -115,5 +117,5 @@ const skelRows=n=>Array.from({length:n||4},()=>'<section class="glass card skel"
 /* ---------- theme switches: no transitions while the look changes ---------- */
 {const u0=uiApply;uiApply=function(){const c=document.documentElement.classList;c.add('theme-switching');const r=u0.apply(this,arguments);requestAnimationFrame(()=>requestAnimationFrame(()=>c.remove('theme-switching')));return r}}
 
-{const r0=render;render=function(){const r=r0.apply(this,arguments);wakeSync();return r}}
+{const r0=render;render=function(){const r=r0.apply(this,arguments);wakeSync();document.documentElement.classList.toggle('working',!!(S&&S.active));return r}}
 wakeSync();syncDot();
