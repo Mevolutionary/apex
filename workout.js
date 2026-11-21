@@ -77,3 +77,32 @@ if(typeof suggestLoad==='function'){const sl0=suggestLoad;suggestLoad=function(e
   if(Math.min(...qs)>=3&&minR>=lo&&minR<hi)return `Last time ${disp(top)} ${unit()} × ${minR} with 3 or more reps to spare. Go up to ${disp(top+inc)} ${unit()}.`;
   if(Math.min(...qs)===0&&minR<hi)return `Last time ${disp(top)} ${unit()} × ${minR}, taken to failure. Same weight, aim for ${Math.min(hi,minR+1)} reps with one left in reserve.`;
   return base}}
+
+/* ---------- A22: training calendar on History ----------
+   One month at a time, each day shaded by how many working sets were done. Encouraging only: counts days
+   trained, never "streak lost". */
+let calOff=0;
+function calCard(){const ws=V().workouts,now=new Date(),m=new Date(now.getFullYear(),now.getMonth()+calOff,1),y=m.getFullYear(),mo=m.getMonth(),days=new Date(y,mo+1,0).getDate(),lead=(m.getDay()+6)%7;
+  const by={};for(const w of ws){const d=new Date(w.start);if(d.getFullYear()!==y||d.getMonth()!==mo)continue;const k=d.getDate();(by[k]=by[k]||{n:0,ids:[]}).n+=setCount(w);by[k].ids.push(w.id)}
+  const lvl=n=>n<=0?0:n<10?1:n<20?2:3,today=calOff===0?now.getDate():-1,trained=Object.keys(by).length;
+  let cells='';for(let i=0;i<lead;i++)cells+='<span></span>';
+  for(let d=1;d<=days;d++){const x=by[d],l=x?lvl(x.n):0,lab=new Date(y,mo,d).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'})+(x?`, ${x.n} set${x.n===1?'':'s'}`:', rest day');
+    cells+=x?`<button class="cd l${l}${d===today?' td':''}" data-a="cal-day" data-v="${x.ids[x.ids.length-1]}" aria-label="${lab}">${d}</button>`:`<span class="cd${d===today?' td':''}" aria-label="${lab}" role="img">${d}</span>`}
+  const name=m.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+  return `<section class="glass card"><div class="row between"><h2 style="margin:0">${name}</h2><div class="row" style="gap:6px"><button class="iconbtn cal-nav" data-a="cal-prev" aria-label="Previous month">‹</button><button class="iconbtn cal-nav" data-a="cal-next" aria-label="Next month" ${calOff>=0?'disabled':''}>›</button></div></div>
+    <div class="cal" aria-label="Training calendar for ${name}">${['M','T','W','T','F','S','S'].map(x=>`<span class="cw">${x}</span>`).join('')}${cells}</div>
+    <div class="small muted" style="margin-top:8px">${trained?`${trained} training day${trained===1?'':'s'} ${calOff===0?'so far this month':'this month'}. Darker means more sets.`:calOff===0?'Your training days this month will show here.':'No workouts logged this month.'}</div></section>`}
+(()=>{const st=document.createElement('style');st.textContent=`.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:12px}
+.cal .cw{font-size:11px;color:var(--ink-3);text-align:center;padding-bottom:2px}
+.cal .cd{aspect-ratio:1;min-height:36px;border-radius:10px;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--ink-3);background:rgb(255 255 255 / .04);font-variant-numeric:tabular-nums}
+.cal .cd.l1{background:color-mix(in oklch,var(--blue) 35%,transparent);color:var(--ink)}
+.cal .cd.l2{background:color-mix(in oklch,var(--blue) 60%,transparent);color:var(--ink)}
+.cal .cd.l3{background:var(--blue);color:#0b1020}
+.cal .cd.td{outline:2px solid rgb(255 255 255 / .6);outline-offset:-2px}
+.cal-nav{width:44px;height:44px;font-size:22px;font-weight:700}.cal-nav[disabled]{opacity:.35}`;document.head.appendChild(st)})();
+{const wa1=workoutAction;workoutAction=function(a,v,b){
+  if(a==='cal-prev'){calOff--;render();return true}
+  if(a==='cal-next'){if(calOff<0)calOff++;render();return true}
+  if(a==='cal-day'){expanded=v;const all=V().workouts.slice().reverse(),i=all.findIndex(w=>w.id===v);if(i>=histShown)histShown=i+1;render();
+    setTimeout(()=>{const el=document.querySelector('[data-a="expand"][data-v="'+v+'"]');if(el)el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'})},60);return true}
+  return wa1(a,v,b)}}

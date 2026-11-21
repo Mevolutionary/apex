@@ -98,7 +98,9 @@ function food(){const l=dayList(foodDay).filter(e=>!e.w),t=fsum(l),tg=targets(),
 function nutHome(){const tg=targets(),t=fsum(dayList(ymd(Date.now())));
   if(!tg)return `<section class="glass card tap" data-a="tab" data-v="food"><div class="row between"><div><div style="font-weight:800">Nutrition</div><div class="small muted">${t.k?en(t.k)+' '+eu()+' logged today':'Track energy and macros'}</div></div><span class="chip">Open</span></div></section>`;
   return `<section class="glass card tap" data-a="tab" data-v="food"><div class="row between"><div style="font-weight:800">Nutrition today</div><div class="num small muted">${en(t.k)} / ${en(tg.kcal)} ${eu()}</div></div><div class="track" style="margin:10px 0 8px"><i style="width:${Math.min(100,t.k/tg.kcal*100)}%"></i></div><div class="small muted num">Protein ${r0(t.p)} / ${tg.p} g · Carbs ${r0(t.c)} / ${tg.c} g · Fat ${r0(t.f)} / ${tg.f} g</div></section>`}
-function nutSettingsRow(){return `<div class="row between"><span>Water goal</span><div class="seg">${[2000,2500,3000,3500].map(v=>`<button data-a="set" data-k="water" data-v="${v}" class="${(+S.settings.water||2500)===v?'on':''}">${v/1000} L</button>`).join('')}</div></div><div class="row between"><span>Energy unit</span><div class="seg"><button data-a="set" data-k="energy" data-v="kcal" class="${isKj()?'':'on'}">kcal</button><button data-a="set" data-k="energy" data-v="kJ" class="${isKj()?'on':''}">kJ</button></div></div><div class="row between"><span>AI key (Gemini)<br><span class="small muted">Used by every AI feature</span></span><button class="btn sm" data-a="gem-guide">${!aiAllowed()?'Sign in to use':gKey()?'Connected · change':'Set up'}</button></div><div class="row between"><span>Energy and macro targets</span><button class="btn sm" data-a="fd-goal">${S.settings.nut?'Edit':'Set up'}</button></div><div class="tile small">AI scanning reads label and meal photos using your own free Google Gemini key, and is only available when you are signed in. Everything else in Nutrition works without it.</div>`}
+function nutSettingsRow(){return `<div class="row between"><span>Water goal</span><div class="seg">${[2000,2500,3000,3500].map(v=>`<button data-a="set" data-k="water" data-v="${v}" class="${(+S.settings.water||2500)===v?'on':''}">${v/1000} L</button>`).join('')}</div></div><div class="row between"><span>Energy unit</span><div class="seg"><button data-a="set" data-k="energy" data-v="kcal" class="${isKj()?'':'on'}">kcal</button><button data-a="set" data-k="energy" data-v="kJ" class="${isKj()?'on':''}">kJ</button></div></div><div class="row between"><span>AI key (Gemini)<br><span class="small muted">Used by every AI feature</span></span><button class="btn sm" data-a="gem-guide">${!aiAllowed()?'Sign in to use':gKey()?'Connected · change':'Set up'}</button></div><div class="row between"><span>Energy and macro targets</span><button class="btn sm" data-a="fd-goal">${S.settings.nut?'Edit':'Set up'}</button></div><div class="tile small">AI scanning reads label and meal photos using your own free Google Gemini key, and is only available when you are signed in. Everything else in Nutrition works without it.</div>
+<div class="row between"><span>Products first from</span><div class="seg"><button data-a="set" data-k="foodRegion" data-v="au" class="${foodRegion()==='au'?'on':''}">Australia</button><button data-a="set" data-k="foodRegion" data-v="world" class="${foodRegion()==='world'?'on':''}">Everywhere</button></div></div>
+<div class="row between"><span>USDA key<br><span class="small muted">${(S.settings.usdaKey||'').trim()?'Your own key':'Optional, for the backup search'}</span></span><button class="btn sm" data-a="usda-key">${(S.settings.usdaKey||'').trim()?'Change':'Add'}</button></div>`}
 
 /* ================= status, errors, network ================= */
 function busySheet(title,sub){openSheet(`<div style="text-align:center;padding:18px 0 10px"><div class="spin"></div><h2 style="margin:16px 0 6px">${title}</h2><p style="margin:0 auto">${sub||''}</p></div>`,'busy')}
@@ -161,26 +163,47 @@ async function runSearch(q){const box=$('#fd-res');if(!box)return;q=q.trim();if(
   if(!$('#fd-q')||$('#fd-q').value.trim()!==q)return;searchRes=res||[];
   box.innerHTML=(localRes.length?resRows(localRes,'l'):'')+(res===null?`<div class="tile small"><strong>The product database could not be reached.</strong><br>${localRes.length?'The results above are from your own and built-in foods. ':''}You can try again, scan the barcode, or type the numbers in.<div class="row" style="margin-top:10px"><button class="btn sm" data-a="fd-research">Try again</button><button class="btn sm" data-a="fd-quick">Quick add</button></div><div class="muted" style="margin-top:8px;overflow-wrap:anywhere">Details: ${esc(why)}</div></div>`
     :searchRes.length?resRows(searchRes,'s'):(localRes.length?'':'<div class="muted small">No matches. Try fewer words, scan the barcode, or use Quick add.</div>'))}
-const OFF_FIELDS='code,product_name,brands,nutriments,serving_quantity';
+const OFF_FIELDS='code,product_name,brands,nutriments,serving_quantity,countries_tags';
+/* A23: identify Apex to Open Food Facts on every call (a browser can't set its own User-Agent), stay under
+   their read limits (about 15 product reads and 10 searches a minute) and don't ask twice for the same thing. */
+const OFF_APP=()=>'&app_name=Apex&app_version='+encodeURIComponent(VERSION);
+const offLog={prod:[],search:[]},OFF_MAX={prod:15,search:10};
+function offGate(kind){const now=Date.now(),l=offLog[kind]=offLog[kind].filter(t=>now-t<60000);if(l.length>=OFF_MAX[kind])throw{why:'Open Food Facts limit reached for this minute, so it was skipped'};l.push(now)}
+const offSearchCache=new Map();
+/* barcode answers kept on this device for 30 days, so a rescan is instant and works offline */
+let offDbP=null;const offDb=()=>offDbP||(offDbP=new Promise((res,rej)=>{try{const r=indexedDB.open('apex-cache',1);r.onupgradeneeded=()=>r.result.createObjectStore('off');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}catch(e){rej(e)}}));
+async function offCacheGet(code){try{const db=await offDb();return await new Promise(res=>{const q=db.transaction('off').objectStore('off').get(code);q.onsuccess=()=>{const v=q.result;res(v&&Date.now()-v.at<30*864e5?v:null)};q.onerror=()=>res(null)})}catch(e){return null}}
+async function offCachePut(code,val){try{const db=await offDb();db.transaction('off','readwrite').objectStore('off').put(Object.assign({at:Date.now()},val),code)}catch(e){}}
+/* A24: products sold in Australia come first. 'au' searches Australia's Open Food Facts first and tops it up worldwide. */
+const foodRegion=()=>S.settings.foodRegion||'au';
+/* A26: a personal USDA key (free) lifts the shared DEMO_KEY limit of 30 searches an hour */
+const usdaKey=()=>(S.settings.usdaKey||'').trim()||'DEMO_KEY';
 function offItem(p){const n=p.nutriments||{};let k=n['energy-kcal_100g'];if(k==null&&n['energy_100g']!=null)k=n['energy_100g']/4.184;const name=p.product_name||p.product_name_en;if(k==null||!name)return null;
   /* Open Food Facts stores every nutrient in grams per 100 g, so minerals and vitamins are converted to mg or micrograms here. */
   const x={},put=(key,field,mul)=>{const v=n[field+'_100g'];if(v!=null&&v!==''&&isFinite(+v))x[key]=+v*mul};
   put('fib','fiber',1);put('sug','sugars',1);put('sat','saturated-fat',1);put('trans','trans-fat',1);put('mono','monounsaturated-fat',1);put('poly','polyunsaturated-fat',1);put('na','sodium',1000);if(x.na==null)put('na','salt',400);
   put('chol','cholesterol',1000);put('pot','potassium',1000);put('ca','calcium',1000);put('fe','iron',1000);put('vc','vitamin-c',1000);put('va','vitamin-a',1e6);put('vd','vitamin-d',1e6);
-  return{n:String(name).slice(0,80),b:String(Array.isArray(p.brands)?p.brands[0]||'':p.brands||'').split(',')[0].slice(0,40),code:p.code,per:{k:+k||0,p:+n.proteins_100g||0,c:+n.carbohydrates_100g||0,f:+n.fat_100g||0,x},serv:+p.serving_quantity||null}}
+  return{n:String(name).slice(0,80),b:String(Array.isArray(p.brands)?p.brands[0]||'':p.brands||'').split(',')[0].slice(0,40),code:p.code,au:Array.isArray(p.countries_tags)&&p.countries_tags.includes('en:australia')?1:undefined,per:{k:+k||0,p:+n.proteins_100g||0,c:+n.carbohydrates_100g||0,f:+n.fat_100g||0,x},serv:+p.serving_quantity||null}}
 /* USDA FoodData Central, used when Open Food Facts is unreachable. DEMO_KEY is its shared public key with a low hourly limit. */
 function fdcItem(f){const g=id=>{const n=(f.foodNutrients||[]).find(x=>x.nutrientId===id);return n?+n.value||0:0};const k=g(1008);if(!k||!f.description)return null;const nm=f.description.toLowerCase().replace(/(^|\s)\S/g,c=>c.toUpperCase());
   return{n:nm.slice(0,80),b:(f.brandName||f.brandOwner||'USDA').slice(0,40),src:'USDA FoodData Central',per:{k,p:g(1003),c:g(1005),f:g(1004),x:(()=>{const x={},has=id=>(f.foodNutrients||[]).some(n=>n.nutrientId===id);[['fib',1079],['sug',2000],['sat',1258],['trans',1257],['mono',1292],['poly',1293],['na',1093],['chol',1253],['pot',1092],['ca',1087],['fe',1089],['vc',1162],['va',1106],['vd',1114]].forEach(a=>{if(has(a[1]))x[a[0]]=g(a[1])});return x})()},serv:/^g|ml$/i.test(f.servingSizeUnit||'')?+f.servingSize||null:null}}
 /* Try each source in turn; only fail if every one fails, and report why each did. */
-async function foodSearch(q){const e=encodeURIComponent(q),why=[];
-  const tries=[async()=>((await getJSON('https://world.openfoodfacts.org/cgi/search.pl?search_terms='+e+'&search_simple=1&action=process&json=1&page_size=25&fields='+OFF_FIELDS,12000)).products||[]).map(offItem),
-    async()=>((await getJSON('https://search.openfoodfacts.org/search?q='+e+'&page_size=25&fields='+OFF_FIELDS,10000)).hits||[]).map(offItem),
-    async()=>((await getJSON('https://api.nal.usda.gov/fdc/v1/foods/search?api_key=DEMO_KEY&pageSize=20&query='+e,10000)).foods||[]).map(fdcItem)];
-  for(const t of tries){try{return (await t()).filter(Boolean)}catch(x){why.push((x&&x.why)||'error')}}
+async function foodSearch(q){const key=foodRegion()+'|'+q.trim().toLowerCase();if(offSearchCache.has(key))return offSearchCache.get(key).slice();
+  const e=encodeURIComponent(q),why=[],cgi=host=>'https://'+host+'.openfoodfacts.org/cgi/search.pl?search_terms='+e+'&search_simple=1&action=process&json=1&page_size=25&fields='+OFF_FIELDS+OFF_APP();
+  const auFirst=l=>l.filter(x=>x.au).concat(l.filter(x=>!x.au));
+  const tries=[async()=>{let l=[];
+      if(foodRegion()==='au'){offGate('search');l=((await getJSON(cgi('au'),12000)).products||[]).map(offItem).filter(Boolean).map(x=>(x.au=1,x));if(l.length>=8)return l}
+      offGate('search');const w=((await getJSON(cgi('world'),12000)).products||[]).map(offItem).filter(Boolean),seen=new Set(l.map(x=>x.code));
+      return auFirst(l.concat(w.filter(x=>!seen.has(x.code))))},
+    async()=>{offGate('search');return auFirst(((await getJSON('https://search.openfoodfacts.org/search?q='+e+'&page_size=25&fields='+OFF_FIELDS+OFF_APP(),10000)).hits||[]).map(offItem).filter(Boolean))},
+    async()=>((await getJSON('https://api.nal.usda.gov/fdc/v1/foods/search?api_key='+encodeURIComponent(usdaKey())+'&pageSize=20&query='+e,10000)).foods||[]).map(fdcItem)];
+  for(const t of tries){try{const r=(await t()).filter(Boolean);offSearchCache.set(key,r);if(offSearchCache.size>60)offSearchCache.delete(offSearchCache.keys().next().value);return r.slice()}catch(x){why.push((x&&x.why)||'error')}}
   throw{why:why.join('; ')}}
-async function offBarcode(code){const c=encodeURIComponent(code),why=[];let reached=false;
-  const urls=['https://world.openfoodfacts.org/api/v2/product/'+c+'.json?fields='+OFF_FIELDS,'https://world.openfoodfacts.org/api/v0/product/'+c+'.json','https://search.openfoodfacts.org/search?q=code%3A'+c+'&page_size=1&fields='+OFF_FIELDS];
-  for(const u of urls){try{const j=await getJSON(u,12000);reached=true;const prod=j.product||(j.hits&&j.hits[0]);if(prod){const it=offItem(prod);if(it){it.src='Open Food Facts';return{item:it}}return{incomplete:prod.product_name||''}}}catch(x){why.push((x&&x.why)||'error')}}
+async function offBarcode(code){const hit=await offCacheGet(String(code));if(hit&&hit.item)return{item:hit.item};
+  const r=await offBarcodeNet(code);if(r.item)offCachePut(String(code),{item:r.item});return r}
+async function offBarcodeNet(code){const c=encodeURIComponent(code),why=[];let reached=false;
+  const urls=['https://world.openfoodfacts.org/api/v2/product/'+c+'.json?fields='+OFF_FIELDS+OFF_APP(),'https://world.openfoodfacts.org/api/v0/product/'+c+'.json?'+OFF_APP().slice(1),'https://search.openfoodfacts.org/search?q=code%3A'+c+'&page_size=1&fields='+OFF_FIELDS+OFF_APP()];
+  for(const u of urls){try{offGate(u.includes('search.')?'search':'prod');const j=await getJSON(u,12000);reached=true;const prod=j.product||(j.hits&&j.hits[0]);if(prod){const it=offItem(prod);if(it){it.src='Open Food Facts';return{item:it}}return{incomplete:prod.product_name||''}}}catch(x){why.push((x&&x.why)||'error')}}
   if(reached)return{item:null};throw{why:why.join('; ')}}
 
 /* confirm how much of a food was eaten */
@@ -315,7 +338,7 @@ async function geminiSave(){const k=(($('#gem-key')||{}).value||'').trim();if(k.
 /* ================= events ================= */
 function nutPreClick(ev){const ai=ev.target.closest&&ev.target.closest('label[data-ai]');if(ai&&ev.target.tagName!=='INPUT'&&(!aiAllowed()||!gKey())){ev.preventDefault();aiAllowed()?geminiGuide():aiGate();return true}return false}
 function nutInput(t){const i=t.dataset.i;
-  if(t.id==='fd-q'){clearTimeout(searchTimer);const q=t.value;searchTimer=setTimeout(()=>runSearch(q),450);return true}
+  if(t.id==='fd-q'){clearTimeout(searchTimer);const q=t.value;searchTimer=setTimeout(()=>runSearch(q),650);return true}
   if(i==='fd-g'){totLine();return true}
   if(i==='fd-per'){if(nutItem)nutItem.per[t.dataset.k]=t.dataset.k==='k'?enIn(num(t.value)):num(t.value);totLine();return true}
   if(i==='ml-g'){const it=mealItems[+t.dataset.x];if(it)it.g=num(t.value);return true}
@@ -326,7 +349,14 @@ function nutChange(t){const f=t.files&&t.files[0];
   if(t.dataset.i==='ml-on'){const it=mealItems[+t.dataset.x];if(it){it.on=t.checked;mealSheet()}return true}
   if(t.dataset.i==='ml-g'){mealSheet();return true}
   return false}
-function nutAction(a,v,b){switch(a){
+function usdaSheet(){const k=(S.settings.usdaKey||'').trim();pushSheet(`<h2>USDA key</h2><p>If Open Food Facts can't be reached, Apex searches the US government's FoodData Central. Without your own key it shares one that allows 30 searches an hour across everyone. A free personal key allows 1,000 an hour.</p><div class="stack">
+  <div class="step"><b>1</b><div><div style="font-weight:700">Get a free key</div><div class="small muted">Fill in the short form on the USDA site. The key arrives by email straight away.</div><a class="btn sm" style="margin-top:8px" href="https://fdc.nal.usda.gov/api-key-signup" target="_blank" rel="noopener">Open the sign-up page</a></div></div>
+  <div class="step"><b>2</b><div><div style="font-weight:700">Paste it here</div><input type="text" id="usda-k" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="40 letters and numbers" value="${esc(k)}" style="margin-top:8px"></div></div>
+  </div><div class="row" style="margin-top:16px">${k?'<button class="btn" style="flex:1" data-a="usda-del">Remove</button>':''}<button class="btn primary" style="flex:1" data-a="usda-save">Save</button></div><p class="small muted" style="margin-top:12px">The key is saved with your settings and synced to your account. It only lets Apex search food data.</p>`,'usda')}
+function nutAction(a,v,b){
+  if(a==='usda-key'){usdaSheet();return}
+  if(a==='usda-save'){const k=($('#usda-k')||{}).value.trim();if(!/^[A-Za-z0-9]{40}$/.test(k)){if(typeof badField==='function')badField($('#usda-k'));toast('That doesn\'t look like a USDA key. It should be 40 letters and numbers.');return}S.settings.usdaKey=k;save('settings');offSearchCache.clear();closeSheet();toast('USDA key saved.');return}
+  if(a==='usda-del'){delete S.settings.usdaKey;save('settings');offSearchCache.clear();closeSheet();toast('USDA key removed.');return}switch(a){
   case 'fd-prev':foodDay=ymd(new Date(foodDay+'T12:00').getTime()-DAY);render();break;
   case 'fd-next':if(foodDay<ymd(Date.now())){foodDay=ymd(new Date(foodDay+'T12:00').getTime()+DAY);render()}break;
   case 'fd-add':addSheet();break;

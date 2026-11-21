@@ -319,7 +319,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.72';
+const LB=2.20462, DAY=864e5, VERSION='0.73';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -677,7 +677,7 @@ let histShown=25;
 function histDetail(w){return `<div class="list">${w.exercises.map(e=>{const pr=(w.prs||[]).some(p=>p.exId===e.exId);return `<div class="tap" data-a="ex" data-v="${esc(e.exId)}"><div class="row between"><span style="font-weight:600">${esc(exById(e.exId).name)}</span>${pr?'<span class="pr">PR</span>':''}</div><div class="small muted num">${(e.warm||[]).length?'Warm-up '+e.warm.map(s=>disp(s.w||0)+' × '+s.r).join(', ')+'<br>':''}${e.sets.map(s=>disp(s.w||0)+' × '+s.r+(s.t?' '+SETT[s.t][0]:'')).join('   ·   ')}</div></div>`}).join('')}${(w.cardio||[]).map(c=>`<div><div style="font-weight:600">${esc(c.type)}</div><div class="small muted num">${c.mins} min${c.km?' · '+(S.settings.unit==='lb'?Math.round(c.km/1.609*10)/10+' mi':c.km+' km'):''}</div></div>`).join('')}</div>
   ${isEmpty()?'':`<div class="row wrap" style="margin-top:14px;gap:8px"><button class="btn sm" style="padding:0 12px" data-a="summary" data-v="${w.id}">Summary</button><button class="btn sm" style="padding:0 12px" data-a="to-routine" data-v="${w.id}">Save routine</button><button class="btn sm danger" style="padding:0 12px" data-a="del-workout" data-v="${w.id}">Delete</button></div>`}`}
 function history(){const all=V().workouts.slice().reverse(),l=all.slice(0,histShown);
-  return `<div class="top"><h1>History</h1><span class="sub">${all.length} workout${all.length===1?'':'s'}</span></div>${demoBanner()}
+  return `<div class="top"><h1>History</h1><span class="sub">${all.length} workout${all.length===1?'':'s'}</span></div>${demoBanner()}${typeof calCard==='function'&&all.length?calCard():''}
   ${l.length?l.map(w=>`<section class="glass card hist ${expanded===w.id?'open':''}"><button data-a="expand" data-v="${w.id}" style="width:100%;text-align:left" aria-expanded="${expanded===w.id}"><div class="row between"><h3 style="font-size:18px;font-weight:800">${esc(w.name)}</h3>${(w.prs||[]).length?`<span class="pr">${w.prs.length} PR${w.prs.length>1?'s':''}</span>`:''}</div>
     <div class="small muted" style="margin-top:4px">${niceDate(w.start)} · ${dur(w.end-w.start)} · ${setCount(w)} sets · ${big(volume(w))} ${unit()}${(w.cardio||[]).length?' · '+w.cardio.reduce((t,c)=>t+(+c.mins||0),0)+' min cardio':''}</div></button>
     <div class="fold"><div class="foldin">${expanded===w.id?histDetail(w):''}</div></div></section>`).join(''):'<section class="glass card muted">Finished workouts show up here.</section>'}
@@ -841,7 +841,7 @@ const APP_URL='https://mevolutionary.github.io/apex/';
 function installGuide(){const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1),and=/Android/.test(navigator.userAgent);
   const st=(n,t,d,shot)=>`<div class="step"><b>${n}</b><div><div style="font-weight:700">${t}</div><div class="small muted">${d}</div>${shot?`<div class="shot">${shot}</div>`:''}</div></div>`;
   const shareIc='<svg viewBox="0 0 24 24" style="width:18px;height:18px;vertical-align:-4px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M12 15V3M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
-  const iosSteps=st(1,'Open this page in Safari','It has to be Safari. If you are in another browser or inside a chat app, copy the link below and paste it into Safari.',`<div class="bar">${APP_URL.replace('https://','')}</div>`)
+  const iosSteps=st(1,'Open this page in Safari','Safari works best. Chrome and Edge can also add it on recent iPhones (iOS 16.4 or later) through their Share menu. If you are inside a chat or social app, copy the link below and paste it into Safari.',`<div class="bar">${APP_URL.replace('https://','')}</div>`)
     +st(2,'Tap the Share button','It is the square with an arrow pointing up. On newer iPhones tap the three dots first, then Share.',`${shareIc} Share`)
     +st(3,'Choose "Add to Home Screen"','Scroll down the list to find it. If it is missing, tap "View more" or "Edit Actions" at the bottom.','<span class="fakebtn">Add to Home Screen</span>')
     +st(4,'Leave "Open as Web App" on and tap Add','Apex now has its own icon and opens full screen like any other app.','')
