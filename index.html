@@ -13,10 +13,10 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;800;900&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
+/* A10: Nunito is served from Apex itself (Latin only, weights 600 to 900, 54 KB, SIL Open Font License in fonts/), so no request goes to Google.
+   On iPhone the system rounded font is used first anyway; this is mainly for Android friends. */
+@font-face{font-family:'Nunito';src:url('fonts/nunito-latin.woff?v=1') format('woff');font-weight:600 900;font-style:normal;font-display:swap}
 /* Layout idea: one phone-width column of glass panels floating over a slow colour field; a floating glass tab bar; sheets rise from the bottom. Single dark theme by choice. */
 :root{
   color-scheme:dark;
@@ -310,7 +310,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.68';
+const LB=2.20462, DAY=864e5, VERSION='0.69';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;

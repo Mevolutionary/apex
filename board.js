@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.69',['The app font is now built in, so Apex no longer contacts Google Fonts']],
   ['0.68',['Uses less battery during a workout: the background stays still while you train']],
   ['0.67',['Screens now change in under a third of a second, with a quicker, calmer motion']],
   ['0.66',['Updated the sign-in and sync library to its latest version']],
