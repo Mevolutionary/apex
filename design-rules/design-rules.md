@@ -33,6 +33,7 @@ Follow these rules in every UI change to Apex. If a rule conflicts with a direct
 
 - **Easing:** never `ease-in` for UI. Default to a strong ease-out `cubic-bezier(0.23, 1, 0.32, 1)`; sheets and drawers use the iOS curve `cubic-bezier(0.32, 0.72, 0, 1)`.
 - **Duration:** keep UI animations under 300ms (micro-interactions 100–150ms, dropdowns/tooltips 150–250ms, modals/sheets 200–300ms).
+  - *Sole exception (approved by Asher, 22 Nov 2026):* a left/right page swipe slides 56px over 380ms (old page out in 300ms) so it reads as movement. Taps and dock changes stay under 300ms.
 - **Origin-aware popovers:** popovers and menus scale out from the element that opened them (`transform-origin` at the trigger). Modals stay centred.
 
 ## Feedback
