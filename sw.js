@@ -3,8 +3,8 @@
      connection never holds up opening the app (the fresh copy is still saved for next time).
    - files with ?v=<version> in the address (the app's scripts), fonts and the sync library never change for a given
      address, so the saved copy is used straight away with no network wait. */
-const CACHE='apex-shell-v64';
-self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','index.html','config.js','manifest.webmanifest','icon-192.png'])).catch(()=>{}))});
+const CACHE='apex-shell-v65';
+self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','index.html','config.js','manifest.webmanifest','icon-192.png','vendor/zxing-1d.min.js?v=0.23.0'])).catch(()=>{}))});
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 const keep=(req,res)=>{if(res&&(res.ok||res.type==='opaque')){const copy=res.clone();caches.open(CACHE).then(c=>c.put(req,copy)).catch(()=>{})}return res};
 self.addEventListener('fetch',e=>{const r=e.request,u=new URL(r.url);if(r.method!=='GET')return;
