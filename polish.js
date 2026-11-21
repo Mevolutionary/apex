@@ -49,6 +49,19 @@ function undoRun(){const f=undoFn;undoFn=null;clearTimeout(undoT);const t=$('#to
 const snap=o=>JSON.parse(JSON.stringify(o));
 function polishAction(a,v,b){const x=b&&b.dataset?+b.dataset.x:NaN;switch(a){
   case 'undo':undoRun();return true;
+  /* A2: ticking a set updates only that row (and the time-left line) instead of redrawing the whole workout */
+  case 'check':{if(tab!=='train'||!S.active||!b.closest||!b.closest('#view'))return false;const i=x,j=+b.dataset.s,e=S.active.exercises[i],st=e&&e.sets[j];if(!st)return false;
+    const p=prevFor(prevEx(e.exId),e.sets,j);
+    if(!st.done){if(st.w==null&&p)st.w=p.w;if(st.r==null&&p)st.r=p.r;if(!(st.r>0)){toast('Enter reps first.');return true}st.done=true;if(!e.ss)startRest(e.exId)}else st.done=false;
+    save('active');
+    b.classList.toggle('on',st.done);b.setAttribute('aria-pressed',String(st.done));b.classList.remove('pop');if(st.done){void b.offsetWidth;b.classList.add('pop')}
+    const wI=document.getElementById('w-'+i+'-'+j),rI=document.getElementById('r-'+i+'-'+j);
+    if(wI&&document.activeElement!==wI){wI.value=st.w==null?'':disp(st.w)}if(rI&&document.activeElement!==rI){rI.value=st.r==null?'':st.r}
+    [wI,rI].forEach(el=>{if(el&&el.parentElement)el.parentElement.classList.toggle('done',st.done)});
+    const ex=exById(e.exId),best=bestOf(S.workouts,e.exId),isPr=st.t!=='w'&&st.done&&best&&score(ex,st)>best.sc+1e-6,n=b.parentElement&&b.parentElement.querySelector('[data-a="set-type"][data-s="'+j+'"]');
+    if(n){let lab;if(st.t)lab=SETT[st.t][0];else{lab=0;for(let k=0;k<=j;k++)if(e.sets[k].t!=='w')lab++}n.innerHTML=isPr?'<span class="pr">PR</span>':lab}
+    const el=document.getElementById('estleft');if(el&&typeof estLeft==='function')el.textContent=estLeft();
+    return true}
   case 'rm-set':{const e=S.active.exercises[x];if(!e||!e.sets.length)return true;const s=e.sets.pop();save('active');render();undoToast('Set removed.',()=>{if(S.active&&S.active.exercises[x]===e){e.sets.push(s);save('active');render()}});return true}
   case 'rm-ex':{const l=S.active.exercises,e=l[x];if(!e)return true;l.splice(x,1);save('active');render();undoToast(exById(e.exId).name+' removed.',()=>{if(S.active&&S.active.exercises===l){l.splice(Math.min(x,l.length),0,e);save('active');render()}});return true}
   case 'cardio-rm':{const l=S.active.cardio,c=l[x];l.splice(x,1);save('active');render();undoToast('Cardio removed.',()=>{if(S.active&&S.active.cardio===l){l.splice(x,0,c);save('active');render()}});return true}

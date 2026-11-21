@@ -310,7 +310,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.62';
+const LB=2.20462, DAY=864e5, VERSION='0.63';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -621,7 +621,7 @@ function train(){const a=S.active;if(!a){const last=S.workouts[S.workouts.length
   <section class="glass card"><h2>Routines</h2>${S.routines.length?`<div class="list">${S.routines.map(r=>`<button class="row between" style="width:100%;text-align:left" data-a="routine" data-v="${r.id}"><span style="min-width:0"><span style="font-weight:600;display:block">${esc(r.name)}</span><span class="small muted">${r.exIds.length} exercise${r.exIds.length===1?'':'s'} · ${r.exIds.slice(0,3).map(x=>esc(exById(x).name)).join(', ')}${r.exIds.length>3?' and more':''}</span></span><span class="chip">View</span></button>`).join('')}</div>`:'<div class="muted small">Finish a workout and choose Save as routine to reuse it here.</div>'}</section>
   ${typeof coachTrain==='function'?coachTrain():''}`}
 
-  return `<div class="top"><div style="min-width:0;flex:1"><input type="text" id="wname" data-i="wname" value="${esc(a.name)}" aria-label="Workout name" style="background:none;border:0;padding:0;font-family:var(--display);font-size:28px;font-weight:900;min-height:0"><div class="sub num" id="elapsed"></div><div class="small muted">${typeof estLeft==='function'?estLeft():''}</div></div><button class="btn sm" data-a="plates">Plates</button></div>
+  return `<div class="top"><div style="min-width:0;flex:1"><input type="text" id="wname" data-i="wname" value="${esc(a.name)}" aria-label="Workout name" style="background:none;border:0;padding:0;font-family:var(--display);font-size:28px;font-weight:900;min-height:0"><div class="sub num" id="elapsed"></div><div class="small muted" id="estleft">${typeof estLeft==='function'?estLeft():''}</div></div><button class="btn sm" data-a="plates">Plates</button></div>
   ${a.exercises.map((e,i)=>{const ex=exById(e.exId),pe=prevEx(e.exId),best=bestOf(S.workouts,e.exId),linked=i>0&&a.exercises[i-1].ss;let wn=0;
     return `${linked?'<div class="sslink">Superset</div>':''}<section class="glass card ex ${e.ss||linked?'ss':''}"><div class="row between"><div><h3>${esc(ex.name)}</h3><div class="small muted">${ex.muscle}${ex.bw?' · bodyweight, enter added weight':''}</div></div><button class="btn sm danger" data-a="rm-ex" data-x="${i}">Remove</button></div>
     <div class="exmeta"><button class="chip" data-a="ex-rest" data-x="${i}">Rest ${restLabel(e.exId)}</button><button class="chip" data-a="ex-swap" data-x="${i}">Swap</button><button class="chip" data-a="ex-warm" data-x="${i}">Warm-up</button>${i>0?`<button class="chip" data-a="ex-up" data-x="${i}" aria-label="Move ${esc(ex.name)} earlier">↑</button>`:''}${i<a.exercises.length-1?`<button class="chip" data-a="ex-down" data-x="${i}" aria-label="Move ${esc(ex.name)} later">↓</button>`:''}${i<a.exercises.length-1?`<button class="chip ${e.ss?'on':''}" data-a="ex-ss" data-x="${i}">Superset with next</button>`:''}</div>

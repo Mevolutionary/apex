@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.63',['Ticking a set is quicker: only that row updates']],
   ['0.62',['Faster syncing: the app now downloads only what changed since last time, not your whole history']],
   ['0.61',['Saving no longer pauses the app: your history now lives in the phone\'s database and only the parts that changed are written']],
   ['0.59',['Swiping between screens now slides the right way when you have reordered the dock','Your AI key is saved to your account, so it comes back after reinstalling','One AI setup guide for every AI feature','Studies loads more reliably','No more blank moment when changing screens, and a smoother dock']],
