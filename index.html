@@ -310,7 +310,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.61';
+const LB=2.20462, DAY=864e5, VERSION='0.62';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -390,7 +390,7 @@ function docFor(key){if(key==='settings')return{settings:S.settings,custom:S.cus
   if(key.startsWith('fd_')){const days={},m=key.slice(3);for(const d in S.food)if(d.startsWith(m)&&S.food[d].length)days[d]=S.food[d];return{days}}
   return{list:S.workouts.filter(w=>monthKey(w.start)===key)}}
 function cloudPut(key){markUnsynced(key,true);if(key.startsWith('wk_')||key.startsWith('fd_'))knownMonths.add(key);if(!cloudReady)return;pend[key]=clone(docFor(key));if(!busy[key])pump(key)}
-async function pump(key){busy[key]=true;while(key in pend){const d=pend[key];delete pend[key];try{await fb.F.setDoc(fb.F.doc(fb.db,'users',fbUser.uid,'data',key),d);if(!(key in pend))markUnsynced(key,false)}catch(e){cloudState='error';toast('Could not sync. Your change is kept on this device and will sync later.')}}busy[key]=false}
+async function pump(key){busy[key]=true;while(key in pend){const d=pend[key];delete pend[key];try{await fb.F.setDoc(fb.F.doc(fb.db,'users',fbUser.uid,'data',key),Object.assign({},d,{u:fb.F.serverTimestamp()}));if(!(key in pend))markUnsynced(key,false)}catch(e){cloudState='error';toast('Could not sync. Your change is kept on this device and will sync later.')}}busy[key]=false}
 let activeTimer=null;
 function save(...keys){localSave();for(const k of keys){if(k==='active'){markUnsynced('active',true);clearTimeout(activeTimer);activeTimer=setTimeout(()=>cloudPut('active'),1500)}else cloudPut(k)}}
 function saveAll(){localSave();const months=new Set(S.workouts.map(w=>monthKey(w.start)));Object.keys(S.food).forEach(d=>months.add('fd_'+d.slice(0,7)));knownMonths.forEach(m=>months.add(m));['settings','weights','active','foods',...months].forEach(cloudPut)}
@@ -401,8 +401,30 @@ async function initCloud(){if(!CFG){cloudState='off';return}
     const app=A.initializeApp(CFG);fb={auth:U.getAuth(app),db:F.getFirestore(app),U,F};
     U.onAuthStateChanged(fb.auth,u=>{fbUser=u;cloudReady=false;isOwner=false;vaultKey=null;if(u){vaultLocal(u.uid).then(k=>{if(k&&!vaultKey&&fbUser&&fbUser.uid===u.uid){vaultKey=k;phFlush();refreshSettings()}});pull()}else{cloudState='signedout';refreshSettings();if(tab==='home')render();maybeAskLogin()}})
   }catch(e){cloudState='error';refreshSettings()}}
+/* Sync downloads (A3). Every document written to the cloud carries a server time (u). After one full download, the app
+   asks only for documents changed since the newest time it has seen, so coming back to the app usually downloads nothing.
+   A full download still happens on the first sync on a device, after 24 hours, or if anything looks out of step. */
+const pullMark=()=>{try{return JSON.parse(lsGet('.pullMark.'+fbUser.uid)||'null')}catch(e){return null}},pullMarkSet=o=>lsSet('.pullMark.'+fbUser.uid,JSON.stringify(o));
+const uMs=v=>{try{return v&&v.u&&typeof v.u.toMillis==='function'?v.u.toMillis():0}catch(e){return 0}};
+function applyDoc(id,v){const dirty=new Set(unsynced()).has(id);
+  if(id==='settings'){if(dirty){const cs=new Set(S.custom.map(c=>c.id));for(const c of(v.custom||[]))if(!cs.has(c.id))S.custom.push(c);const rs=new Set(S.routines.map(c=>c.id));for(const c of(v.routines||[]))if(!rs.has(c.id))S.routines.push(c)}else{S.settings=Object.assign({unit:'kg',sex:'male',rest:120},v.settings||{});S.custom=v.custom||[];S.routines=v.routines||[]}}
+  else if(id==='weights'){if(dirty){const days=new Set(S.weights.map(w=>w.d));for(const w of(v.list||[]))if(!days.has(w.d))S.weights.push(w);S.weights.sort((a,b)=>a.d<b.d?-1:1)}else S.weights=v.list||[]}
+  else if(id==='active'){if(!dirty)S.active=v.w||null}
+  else if(id==='foods'){if(dirty){const have=new Set(S.foods.map(f=>f.n+'|'+(f.b||'')));for(const f of(v.list||[]))if(!have.has(f.n+'|'+(f.b||'')))S.foods.push(f)}else S.foods=v.list||[]}
+  else if(id.startsWith('wk_')){knownMonths.add(id);if(dirty){const ids=new Set(S.workouts.map(w=>w.id));for(const w of(v.list||[]))if(!ids.has(w.id))S.workouts.push(w)}else S.workouts=S.workouts.filter(w=>monthKey(w.start)!==id).concat(v.list||[]);S.workouts.sort((a,b)=>a.start-b.start)}
+  else if(id.startsWith('fd_')){knownMonths.add(id);const m=id.slice(3),days=v.days||{};if(dirty){for(const d in days){const mine=S.food[d]||(S.food[d]=[]),have=new Set(mine.map(e=>e.id));for(const e of days[d])if(!have.has(e.id))mine.push(e)}}else{for(const d of Object.keys(S.food))if(d.startsWith(m))delete S.food[d];Object.assign(S.food,days)}}
+  if(dirty)cloudPut(id)}
+async function pullChanges(mark){const snap=await fb.F.getDocs(fb.F.query(fb.F.collection(fb.db,'users',fbUser.uid,'data'),fb.F.where('u','>',fb.F.Timestamp.fromMillis(Math.max(0,mark.u-2000)))));
+  let max=mark.u,n=0,wk=false;snap.forEach(d=>{const v=d.data()||{};n++;max=Math.max(max,uMs(v));if(d.id.startsWith('wk_'))wk=true;applyDoc(d.id,v)});
+  if(n){if(wk)recomputePRs(S.workouts);localSave();const typing=document.activeElement&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);if(!typing)render()}
+  pullMarkSet({u:max,full:mark.full});return n}
 async function pull(){if(!fb||!fbUser||pulling)return;if(Object.keys(pend).length||Object.values(busy).some(Boolean))return;pulling=true;cloudState='connecting';
-  try{const snap=await fb.F.getDocs(fb.F.collection(fb.db,'users',fbUser.uid,'data'));
+  const mark=pullMark();
+  if(mark&&mark.u&&hasLocal()&&Date.now()-(mark.full||0)<864e5){
+    try{await pullChanges(mark);if(!cloudReady){cloudReady=true;unsynced().forEach(k=>cloudPut(k))}cloudState='synced';vaultSync();checkOwner();phFlush();if(typeof gRestore==='function')gRestore();if(tab==='home')render()}
+    catch(e){if(e&&e.code==='permission-denied'){cloudState='blocked';blockReason=fbUser&&fbUser.emailVerified?'invite':'verify';if(tab==='home')render()}else cloudState='error'}
+    pulling=false;refreshSettings();return}
+  try{const snap=await fb.F.getDocs(fb.F.collection(fb.db,'users',fbUser.uid,'data'));let maxU=0;snap.forEach(d=>{maxU=Math.max(maxU,uMs(d.data()))});
     const C={settings:null,custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};let any=false;
     snap.forEach(d=>{const v=d.data()||{};any=true;if(d.id==='settings'){C.settings=v.settings;C.custom=v.custom||[];C.routines=v.routines||[]}else if(d.id==='weights')C.weights=v.list||[];else if(d.id==='active')C.active=v.w||null;else if(d.id.startsWith('wk_')){knownMonths.add(d.id);C.workouts.push(...(v.list||[]))}else if(d.id==='foods')C.foods=v.list||[];else if(d.id.startsWith('fd_')){knownMonths.add(d.id);Object.assign(C.food,v.days||{})}});
     const dirty=unsynced().length>0&&hasLocal();
@@ -417,7 +439,7 @@ async function pull(){if(!fb||!fbUser||pulling)return;if(Object.keys(pend).lengt
     }else if(any){const typing=document.activeElement&&/INPUT|SELECT/.test(document.activeElement.tagName);
       S={settings:Object.assign({unit:'kg',sex:'male',rest:120},C.settings||{}),custom:C.custom,routines:C.routines,weights:C.weights,workouts:C.workouts.sort((a,b)=>a.start-b.start),active:C.active,food:C.food,foods:C.foods};cloudReady=true;localSave();try{localStorage.removeItem(LS+'.unsynced')}catch(e){}migrate();if(!typing)render()}
     else{cloudReady=true;if(hasLocal())saveAll()}
-    cloudState='synced';vaultSync();checkOwner();phFlush();if(typeof gRestore==='function')gRestore();if(tab==='home')render()
+    if(maxU)pullMarkSet({u:maxU,full:Date.now()});cloudState='synced';vaultSync();checkOwner();phFlush();if(typeof gRestore==='function')gRestore();if(tab==='home')render()
   }catch(e){if(e&&e.code==='permission-denied'){cloudState='blocked';blockReason=fbUser&&fbUser.emailVerified?'invite':'verify';if(tab==='home')render()}else cloudState='error'}
   pulling=false;refreshSettings()}
 function loginSheet(){openSheet(`<h2>Sign in to keep your training</h2><p>Right now everything is stored only on this device. Sign in and it backs up automatically and stays in step across your phone and computer. New here? Enter an email and a password, then choose Create account.</p>
