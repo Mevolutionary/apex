@@ -301,6 +301,7 @@ svg.chart{width:100%;height:auto;display:block}
 <div id="toast" class="glass" role="status"></div>
 
 <script src="config.js"></script>
+<script>/* the History screen is a function called history(), which hides window.history; keep the real one for the Android Back button */window.__hist=window.history</script>
 <script>
 /* ================= data ================= */
 const MUSCLES=['Chest','Back','Shoulders','Biceps','Triceps','Quads','Hamstrings','Glutes','Calves','Core','Other'];
@@ -319,7 +320,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.76';
+const LB=2.20462, DAY=864e5, VERSION='0.77';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -851,7 +852,7 @@ function installGuide(){const ios=/iPhone|iPad|iPod/.test(navigator.userAgent)||
   const andSteps=st(1,'Open this page in Chrome','',`<div class="bar">${APP_URL.replace('https://','')}</div>`)+st(2,'Tap the three dots at the top right','','')+st(3,'Choose "Add to Home screen" or "Install app"','Then confirm. Apex appears with your other apps.','<span class="fakebtn">Install app</span>')+st(4,'Open Apex from the new icon and sign in','','');
   const deskSteps=st(1,'Open this link on your phone','Send it to yourself or share it below, then open this guide again on the phone for the exact steps.',`<div class="bar">${APP_URL.replace('https://','')}</div>`);
   const head=isApp()?'<h2>Share Apex</h2><p>This copy is already on your Home Screen. To help a friend set theirs up, send them the link. These are the steps they follow on an iPhone.</p>':'<h2>Add Apex to your Home Screen</h2><p>This gives Apex its own icon and opens it full screen without the browser bars. It takes under a minute.</p>';
-  pushSheet(head+`<div class="stack">${and?andSteps:(ios||isApp())?iosSteps:deskSteps}</div><div class="row" style="margin-top:16px"><button class="btn" style="flex:1" data-a="app-share">Share link</button><button class="btn" style="flex:1" data-a="app-copy">Copy link</button></div>`,'guide')}
+  pushSheet(head+`${and&&!isApp()&&typeof installBtn==='function'?installBtn():''}<div class="stack">${and?andSteps:(ios||isApp())?iosSteps:deskSteps}</div><div class="row" style="margin-top:16px"><button class="btn" style="flex:1" data-a="app-share">Share link</button><button class="btn" style="flex:1" data-a="app-copy">Copy link</button></div>`,'guide')}
 let toastT;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),3200)}
 const INFO={
  ranks:`<h2>How ranks work</h2><p>Each ranked lift takes your best set and converts it to an estimated one-rep max: weight × (1 + reps ÷ 30), the Epley formula. A single rep counts as the weight itself. Sets of more than 10 reps count as 10, because the formula overestimates beyond that; those sets still earn rep records.</p><p>That number is compared with your latest bodyweight on a ladder of bodyweight multiples for that lift. For example, at 80 kg a bench press of 1× bodyweight is Gold and 1.5× is Diamond. Pull-ups count your bodyweight on the day plus any added weight.</p><p>Bigger people can lift more but not in proportion to their weight, so plain multiples would favour lighter lifters. Apex evens this out with the DOTS formula used in powerlifting: it scales each lift to a reference bodyweight (80 kg for men, 60 kg for women). Lighter lifters need a slightly higher multiple for the same rank and heavier lifters a slightly lower one. The "next rank at" weights already include this.</p><p>Your overall rank is the average across the ranked lifts you have logged. The ladders are approximate, built from commonly used strength standards. They compare you with general lifting benchmarks, since this app has no other users to rank against.</p>`,
@@ -1013,7 +1014,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   nav.addEventListener('touchend',endDrag);nav.addEventListener('touchcancel',endDrag);
   /* swipe left or right anywhere on a screen to move between docked screens */
   let sw=null;
-  view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input:not(.hx),select,.phstrip,.hscroll')?null:{x:t.clientX,y:t.clientY}},{passive:true});
+  view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input:not(.hx),select,.phstrip,.hscroll')||(typeof andEdge==='function'&&andEdge(t.clientX))?null:{x:t.clientX,y:t.clientY}},{passive:true});
   view.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;sw=null;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.8)return;
     const o=swipeOrder(),n=o.indexOf(tab)+(dx<0?1:-1);if(n<0||n>=o.length)return;haptic();go(o[n],1)},{passive:true});
   /* pull the launcher back down into the dock */
@@ -1138,7 +1139,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'plates':platesSheet();break;
   case 'rest-adj':if(rest){rest.end+=(+v)*1000;rest.total=Math.max(rest.total+(+v),1);tick()}break;
   case 'rest-skip':stopRest();break;
-  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof progressAction==='function')progressAction(a,v,b);if(typeof extrasAction==='function')extrasAction(a,v,b);if(typeof moreAction==='function')moreAction(a,v,b);if(typeof welcomeAction==='function')welcomeAction(a,v,b);if(typeof workoutAction==='function')workoutAction(a,v,b);if(typeof healthAction==='function')healthAction(a,v,b);if(typeof afcdAction==='function')afcdAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
+  default:if(typeof nutAction==='function')nutAction(a,v,b);if(typeof coachAction==='function')coachAction(a,v,b);if(typeof summaryAction==='function')summaryAction(a,v,b);if(typeof studiesAction==='function')studiesAction(a,v,b);if(typeof mealsAction==='function')mealsAction(a,v,b);if(typeof progressAction==='function')progressAction(a,v,b);if(typeof extrasAction==='function')extrasAction(a,v,b);if(typeof moreAction==='function')moreAction(a,v,b);if(typeof welcomeAction==='function')welcomeAction(a,v,b);if(typeof workoutAction==='function')workoutAction(a,v,b);if(typeof healthAction==='function')healthAction(a,v,b);if(typeof afcdAction==='function')afcdAction(a,v,b);if(typeof androidAction==='function')androidAction(a,v,b);if(typeof boardAction==='function')boardAction(a,v,b);
   }});
 document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
@@ -1154,7 +1155,7 @@ document.addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.id==='lo
 /* ================= boot ================= */
 </script>
 <script>/* the version in the address lets the service worker keep these files and serve them instantly; a new version asks for new addresses */
-['nutrition','afcd','meals','coach','summary','studies','board','progress','extras','more','welcome','polish','workout','health','perf'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
+['nutrition','afcd','meals','coach','summary','studies','board','progress','extras','more','welcome','polish','workout','health','android','perf'].forEach(n=>document.write('<script src="'+n+'.js?v='+VERSION+'"><\/script>'))</script>
 <script>
 /* iOS can hand a Home Screen app a page that is shorter than the screen, leaving a dark strip under the dock. Measure the
    shortfall and stretch the page by that much. iOS changes the page height at moments that fire no resize event (coming back
@@ -1169,7 +1170,7 @@ document.addEventListener('visibilitychange',()=>{vfix();setTimeout(vfix,350)});
 if(window.visualViewport)visualViewport.addEventListener('resize',()=>setTimeout(vfix,50));
 setInterval(()=>{if(!document.hidden)vfix()},1000);
 uiApply();if(pinGet())lockShow();
-storeLoad().catch(()=>{storeMode='ls';lsLoad()}).then(()=>{migrate();buildDemo();buildNav();go(tab);initGestures();if(typeof welcomeBoot==='function')welcomeBoot();if(typeof notesBoot==='function')notesBoot();if(typeof backupBoot==='function')backupBoot();initCloud()});
+storeLoad().catch(()=>{storeMode='ls';lsLoad()}).then(()=>{migrate();buildDemo();buildNav();go(tab);initGestures();if(typeof androidBoot==='function')androidBoot();if(typeof welcomeBoot==='function')welcomeBoot();if(typeof notesBoot==='function')notesBoot();if(typeof backupBoot==='function')backupBoot();initCloud()});
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 if(location.protocol==='https:')setTimeout(()=>checkUpdate(false),2500);
 </script>
