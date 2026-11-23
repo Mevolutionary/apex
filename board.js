@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.76',['Over 1,500 Australian foods built in (Australian Food Composition Database), shown as "Australian average" and available offline','Apex now opens straight away on slow internet and fetches updates in the background','Data sources and licences page in Settings → About']],
   ['0.75',['Tapping a weight or reps box now highlights the number, so typing replaces it','The +/− bar above the keyboard is gone','Drop sets: add the weights you dropped to. They count towards volume and show in History','The rest beep and spoken cues now ask your music to lower its volume and carry on, rather than stopping it']],
   ['0.74',['Welcome guide updated for the new features']],
   ['0.73',['Training calendar at the top of History: each day shaded by how many sets you did. Tap a day to open that workout','Food search shows products sold in Australia first (Settings → Nutrition to change)','Scanned barcodes are remembered for 30 days, so a rescan is instant and works offline','Apex now identifies itself to Open Food Facts and stays within their limits','Optional personal USDA key for the backup food search','Install guide: Chrome and Edge can add Apex to the Home Screen too']],
