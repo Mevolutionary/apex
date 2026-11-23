@@ -55,6 +55,7 @@ Follow these rules in every UI change to Apex. If a rule conflicts with a direct
 - Timers are calculated from start timestamps, not by counting ticks, so the rest timer stays right after the screen locks.
 - Keep the screen awake during an active workout (Screen Wake Lock API, released when the workout ends); test on iPhone.
 - One-handed gym use: main actions in the bottom thumb zone, big +/− steppers for weight and reps.
+  - *Exception (Asher, 24 Nov 2026):* no +/− stepper bar above the keyboard in Apex; it covered the set rows. Tapping a weight or reps box highlights the whole value instead, so typing replaces it.
 - Undo instead of "Are you sure?" for deleting sets, meals and workouts (toast with Undo for ~5s).
 - Skeleton placeholders instead of spinners for loading lists and charts; no layout jumps when data arrives.
 - Empty states that teach: the first time a screen has no data, show what goes there and one button to start.

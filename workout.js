@@ -15,20 +15,25 @@ document.addEventListener('pointerdown',()=>{if(wakeRefused&&S&&S.active)wakeSyn
 window.addEventListener('pageshow',()=>wakeSync());
 function wakeStatus(){return !navigator.wakeLock?'not supported here (needs iOS 18.4 or later)':!wkOn('awake')?'off in settings':wakeLock?'holding':S&&S.active?(wakeRefused?'refused, retrying on next tap':'asking'):'idle'}
 
-/* ---------- A12: rest beep even when the ringer is on silent ----------
-   Safari's audioSession 'playback' type ignores the silent switch. It can pause other audio, so the
-   session goes back to 'auto' straight after the beep, and the setting is off unless switched on. */
-{const b0=beep;beep=function(){const as=navigator.audioSession;
-  if(wkOn('silentBeep')&&as){try{as.type='playback'}catch(e){}
-    try{if(actx&&actx.state==='suspended')actx.resume()}catch(e){}
-    b0();setTimeout(()=>{try{as.type='auto'}catch(e){}},900);return}
-  b0()}}
+/* ---------- A12 + music: how the rest beep and spoken cues share the speaker with your music ----------
+   Safari's audioSession API sets how Apex's sound mixes with other apps. 'transient' is meant for short
+   sounds: iOS lowers (ducks) the music and brings it back afterwards instead of stopping it. 'playback'
+   is needed to beep with the ringer on silent, which can pause music, so it's only used when that setting
+   is on. The session goes back to 'auto' as soon as the sound ends. */
+let duckT=null;
+function duck(ms){const as=navigator.audioSession;if(!as)return;clearTimeout(duckT);try{as.type=wkOn('silentBeep')?'playback':'transient'}catch(e){}
+  try{if(actx&&actx.state==='suspended')actx.resume()}catch(e){}if(ms)duckT=setTimeout(unduck,ms)}
+function unduck(){const as=navigator.audioSession;clearTimeout(duckT);if(!as)return;try{as.type='auto'}catch(e){}}
+{const b0=beep;beep=function(){if(navigator.audioSession&&!(typeof speaking!=='undefined'&&speaking))duck(900);b0()}}
 
 /* ---------- A13: spoken rest cues for earbuds ---------- */
 let voiceReady=false;
 function voiceUnlock(){if(voiceReady||!('speechSynthesis' in window))return;try{const u=new SpeechSynthesisUtterance(' ');u.volume=0;speechSynthesis.speak(u);voiceReady=true}catch(e){}}
 document.addEventListener('pointerdown',()=>{if(wkOn('speak')&&S&&S.active)voiceUnlock()},{passive:true});
-function say(text){if(!('speechSynthesis' in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=1.05;u.lang=navigator.language||'en-AU';speechSynthesis.speak(u)}catch(e){}}
+let speaking=false;
+function say(text){if(!('speechSynthesis' in window))return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.rate=1.05;u.lang=navigator.language||'en-AU';
+  /* duck the music for the length of the sentence; a long backstop in case iOS never fires onend */
+  speaking=true;duck(12000);const done=()=>{speaking=false;setTimeout(unduck,250)};u.onend=done;u.onerror=done;speechSynthesis.speak(u)}catch(e){speaking=false}}
 /* the next set still to do in the running workout: exercise name and what's in its boxes (or last time's numbers) */
 function nextSetText(){const a=S.active;if(!a)return'';
   for(const e of a.exercises){const j=e.sets.findIndex(s=>!s.done);if(j<0)continue;const s=e.sets[j],ex=exById(e.exId),u=unit()==='lb'?'pounds':'kilograms';
@@ -44,7 +49,7 @@ function generalExtra(){const sw=(k,label,sub)=>{const on=wkOn(k);return `<div c
   return `<h3 style="margin:6px 0 0">During workouts</h3>
     ${sw('awake','Keep screen awake','Stops the phone locking mid-workout, so the rest beep is heard')}
     ${tts?sw('speak','Speak rest cues','Says "Rest done" and your next set, for earbuds'):''}
-    ${as?sw('silentBeep','Beep on silent','Rest beep plays with the ringer off. May briefly pause music'):''}
+    ${as?sw('silentBeep','Beep on silent','Rest beep plays with the ringer off. This can pause your music'):''}
     ${typeof rirSetting==='function'?rirSetting(sw):''}`}
 
 function workoutAction(a,v,b){
@@ -106,3 +111,26 @@ function calCard(){const ws=V().workouts,now=new Date(),m=new Date(now.getFullYe
   if(a==='cal-day'){expanded=v;const all=V().workouts.slice().reverse(),i=all.findIndex(w=>w.id===v);if(i>=histShown)histShown=i+1;render();
     setTimeout(()=>{const el=document.querySelector('[data-a="expand"][data-v="'+v+'"]');if(el)el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'})},60);return true}
   return wa1(a,v,b)}}
+
+/* ---------- drop sets: record what you dropped to ----------
+   A set marked D gets a "Dropped to" line under it. Each drop is a weight and reps (s.dr = [{w,r}]); drops add
+   to volume but never to PRs or ranks, and history shows them as 80 × 8 D → 60 × 6 → 40 × 5. */
+function dropRow(s,i,j){if(s.t!=='d')return'';const dr=s.dr||[],gap=rirOn()?'<span></span>':'';
+  /* each drop sits in the same columns as the set above it, so the weights and reps line up */
+  const rows=dr.map((d,k)=>`<span class="dn" aria-hidden="true">↳</span><span class="prev">Drop ${k+1}</span>
+    <span><input type="number" inputmode="decimal" step="any" data-i="drop" data-x="${i}" data-s="${j}" data-k="${k}" data-f="w" value="${d.w!=null?disp(d.w):''}" placeholder="0" aria-label="Drop ${k+1} weight, set ${j+1}"></span>
+    <span><input type="number" inputmode="decimal" data-i="drop" data-x="${i}" data-s="${j}" data-k="${k}" data-f="r" value="${d.r??''}" placeholder="0" aria-label="Drop ${k+1} reps, set ${j+1}"></span>${gap}
+    <button class="dropx" data-a="drop-rm" data-x="${i}" data-s="${j}" data-v="${k}" aria-label="Remove drop ${k+1}">×</button>`).join('');
+  return rows+`<div class="dropadd"><button class="chip" data-a="drop-add" data-x="${i}" data-s="${j}">${dr.length?'+ Another drop':'+ Add the weight you dropped to'}</button></div>`}
+(()=>{const st=document.createElement('style');st.textContent=`.sets .dn{color:var(--blue);font-weight:800;text-align:center;align-self:center}
+.sets .dropadd{grid-column:1/-1;display:flex;justify-content:flex-end;margin:-4px 0 2px}
+.sets .dropx{min-height:44px;border-radius:12px;color:var(--ink-3);font-size:22px}`;document.head.appendChild(st)})();
+document.addEventListener('input',ev=>{const t=ev.target;if(!t.dataset||t.dataset.i!=='drop'||!S.active)return;const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],d=(st.dr||[])[+t.dataset.k];if(!d)return;
+  const n=parseFloat(t.value);if(t.dataset.f==='w')d.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else d.r=isNaN(n)?null:Math.round(n);save('active')});
+document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.i==='drop'&&t.value!==''){const sel=()=>{if(document.activeElement===t)try{t.select()}catch(x){}};sel();setTimeout(sel,0);setTimeout(sel,60)}});
+{const wa2=workoutAction;workoutAction=function(a,v,b){
+  if((a==='drop-add'||a==='drop-rm')&&S.active){const st=S.active.exercises[+b.dataset.x].sets[+b.dataset.s];if(!st)return true;st.dr=st.dr||[];
+    if(a==='drop-add'){/* suggest about 20% lighter, rounded to 2.5 kg or 5 lb */const last=st.dr.length?st.dr[st.dr.length-1].w:st.w,inc=unit()==='lb'?5/LB:2.5;st.dr.push({w:last?Math.max(0,Math.round(Math.round(last*.8/inc)*inc*100)/100):null,r:null})}else st.dr.splice(+v,1);
+    if(!st.dr.length)delete st.dr;save('active');render();
+    if(a==='drop-add')setTimeout(()=>{const el=document.querySelector(`[data-i="drop"][data-x="${b.dataset.x}"][data-s="${b.dataset.s}"][data-k="${st.dr.length-1}"][data-f="r"]`);if(el)el.focus()},60);return true}
+  return wa2(a,v,b)}}

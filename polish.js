@@ -11,11 +11,6 @@ html.calm .shake{animation:none}
 @media (prefers-reduced-motion:reduce){.shake{animation:none}}
 #toast .undo{margin-left:12px;padding:10px 14px;margin-top:-10px;margin-bottom:-10px;margin-right:-10px;border-radius:999px;font-weight:800;color:var(--ink);background:rgb(255 255 255 / .16);min-height:44px}
 #toast.act{pointer-events:auto}
-#stepbar{position:fixed;left:50%;z-index:65;display:none;gap:10px;padding:8px;border-radius:999px;transform:translateX(-50%);width:min(420px,calc(100% - 24px));background:oklch(20% 0.03 275);border:1px solid rgb(255 255 255 / .16);box-shadow:0 10px 30px rgb(0 0 0 / .4)}
-#stepbar.on{display:flex}
-#stepbar button{flex:1;min-height:52px;border-radius:999px;font-family:var(--display);font-weight:900;font-size:20px;background:rgb(255 255 255 / .12);border:1px solid rgb(255 255 255 / .16);transition:scale 150ms cubic-bezier(.23,1,.32,1)}
-#stepbar button:active{scale:.97}
-#stepbar .lab{flex:none;align-self:center;font-size:12px;color:var(--ink-2);padding:0 4px;min-width:52px;text-align:center}
 .hfade{-webkit-mask-image:linear-gradient(90deg,transparent,#000 var(--fl,0%) calc(100% - var(--fr,0%)),transparent);mask-image:linear-gradient(90deg,transparent,#000 var(--fl,0%) calc(100% - var(--fr,0%)),transparent)}
 [data-a="settings"]{position:relative}
 html.syncing [data-a="settings"]::after,html.synced [data-a="settings"]::after{content:'';position:absolute;right:4px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--gold);box-shadow:0 0 0 2px var(--bg)}
@@ -87,18 +82,13 @@ async function wakeSync(){const want=!!(S&&S.active)&&document.visibilityState==
   else if(!want&&wakeLock){const l=wakeLock;wakeLock=null;try{await l.release()}catch(e){}}}
 document.addEventListener('visibilitychange',()=>wakeSync());
 
-/* ---------- big +/- steppers above the keyboard for weight and reps ---------- */
-let stepIn=null;
-const stepBar=(()=>{const b=document.createElement('div');b.id='stepbar';b.setAttribute('role','group');b.setAttribute('aria-label','Adjust value');b.innerHTML='<button type="button" data-d="-1" aria-label="Decrease">−</button><span class="lab"></span><button type="button" data-d="1" aria-label="Increase">+</button>';document.body.appendChild(b);
-  /* keep the keyboard open: stop the button taking focus away from the field */
-  ['pointerdown','mousedown','touchstart'].forEach(t=>b.addEventListener(t,e=>{e.preventDefault()},{passive:false}));
-  b.addEventListener('click',e=>{const btn=e.target.closest('button');if(!btn||!stepIn)return;e.stopPropagation();stepBy(+btn.dataset.d)});return b})();
-const stepSize=inp=>inp.dataset.f==='r'?1:(S.settings.unit==='lb'?5:2.5);
-function stepBy(dir){const inp=stepIn;if(!inp)return;const cur=parseFloat(inp.value!==''?inp.value:inp.placeholder)||0,step=stepSize(inp),nv=Math.max(0,Math.round((cur+dir*step)/step)*step);inp.value=inp.dataset.f==='r'?String(Math.round(nv)):String(Math.round(nv*100)/100);inp.dispatchEvent(new Event('input',{bubbles:true}));try{haptic()}catch(e){}}
-function stepPlace(){if(!stepIn)return;const vv=window.visualViewport,nav=document.getElementById('nav'),nt=nav&&nav.offsetParent?nav.getBoundingClientRect().top:innerHeight,bottom=Math.min(vv?vv.offsetTop+vv.height:innerHeight,nt);stepBar.style.top=(bottom-stepBar.offsetHeight-10)+'px'}
-document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.i==='set'){stepIn=t;stepBar.querySelector('.lab').textContent=(t.dataset.f==='r'?'1 rep':(S.settings.unit==='lb'?'5 lb':'2.5 kg'));stepBar.classList.add('on');stepPlace();setTimeout(stepPlace,350)}});
-document.addEventListener('focusout',e=>{if(e.target===stepIn){setTimeout(()=>{if(document.activeElement!==stepIn){stepIn=null;stepBar.classList.remove('on')}},60)}});
-if(window.visualViewport){visualViewport.addEventListener('resize',stepPlace);visualViewport.addEventListener('scroll',stepPlace)}
+/* ---------- weight and reps boxes: tapping one highlights the whole number, so typing replaces it ----------
+   (the +/- stepper bar that used to sit above the keyboard was removed at Asher's request: it covered the rows) */
+document.addEventListener('focusin',e=>{const t=e.target;if(!t||!t.dataset||t.dataset.i!=='set'||t.value==='')return;
+  const sel=()=>{if(document.activeElement===t)try{t.select()}catch(x){}};sel();setTimeout(sel,0);setTimeout(sel,60)});
+/* iOS can move the caret on the touch that focused the box; keep the highlight */
+document.addEventListener('mouseup',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.i==='set'&&t.dataset.fresh){delete t.dataset.fresh;e.preventDefault()}},true);
+document.addEventListener('pointerdown',e=>{const t=e.target;if(t&&t.dataset&&t.dataset.i==='set'&&document.activeElement!==t)t.dataset.fresh='1'},true);
 
 /* ---------- sideways rows: fade the edge that has more to scroll to ---------- */
 function hfade(el){const max=el.scrollWidth-el.clientWidth;if(max<=2){el.classList.remove('hfade');return}el.classList.add('hfade');el.style.setProperty('--fl',el.scrollLeft>2?'15%':'0%');el.style.setProperty('--fr',el.scrollLeft<max-2?'15%':'0%')}
