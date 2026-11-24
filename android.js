@@ -1,8 +1,8 @@
 /* Apex on Android: only switches on when Apex runs on an Android phone (or when previewed from the owner's debug menu),
    so nothing here changes the iPhone app.
    - Android's own gestures win at the screen edges: swipe up from the bottom goes Home and a swipe in from the left or
-     right edge means Back. So the dock sits higher, page swipes that start at an edge are left to Android, and a small
-     handle above the dock opens all features with a tap (swiping up on the dock itself still works too).
+     right edge means Back. So the dock sits higher and page swipes that start at an edge are left to Android. The handle
+     already on top of the dock opens all features with a tap, so no extra handle is needed (0.77 added a second one).
    - The Back button closes whatever is on top first (a sheet, the launcher, the welcome guide), then goes back through
      the screens you visited, and from Home it leaves the app as Android users expect.
    - Chrome can install Apex in one tap, so the install guides get an "Install Apex" button when Chrome offers it.
@@ -14,19 +14,9 @@ if(androidMode())document.documentElement.classList.add('android');
 
 (()=>{const st=document.createElement('style');st.textContent=`
 /* keep the dock and anything pinned to the bottom clear of Android's gesture bar or three-button bar */
-html.android{--sab:max(env(safe-area-inset-bottom,0px),18px)}
-html.android #nav{bottom:calc(var(--sab) + 20px)}
-#lhandle{display:none}
-html.android #lhandle{display:grid;place-items:center;position:absolute;z-index:6;left:50%;transform:translateX(-50%);bottom:calc(var(--sab) + 20px + 76px);width:88px;height:28px;border-radius:14px;color:var(--ink-3);transition:opacity .2s}
-html.android #lhandle::before{content:'';width:40px;height:5px;border-radius:3px;background:currentColor;opacity:.7}
-html.android #lhandle::after{content:'';position:absolute;inset:-8px -0px}
-html.android.lopen #lhandle,html.android.sheeton #lhandle{opacity:0;pointer-events:none}`;document.head.appendChild(st)})();
-
-/* ---------- launcher handle: tap above the dock to open all features ---------- */
-function andHandle(){if(document.getElementById('lhandle'))return;const nav=document.getElementById('nav');if(!nav)return;
-  const b=document.createElement('button');b.id='lhandle';b.setAttribute('aria-label','Show all features');b.dataset.a='and-launch';nav.parentNode.insertBefore(b,nav);
-  /* the handle sits just above the dock, whatever height the dock ends up */
-  const place=()=>{const r=nav.getBoundingClientRect(),host=nav.offsetParent||document.body,hr=host.getBoundingClientRect();b.style.bottom=(hr.bottom-r.top+6)+'px'};place();addEventListener('resize',place)}
+/* Android's app area already stops above its navigation bar, so a small gap is enough */
+html.android{--sab:max(env(safe-area-inset-bottom,0px),10px)}
+`;document.head.appendChild(st)})();
 
 /* ---------- edge swipes belong to Android's Back gesture (index.html's page swipe asks this) ---------- */
 const AND_EDGE=28;
@@ -50,11 +40,11 @@ const andNeeds=()=>tab!=='home'||andTrail.some(t=>t!==tab)||(typeof L!=='undefin
 addEventListener('popstate',()=>{if(!androidMode()||!andArmed)return;andArmed=false;if(andBack()&&andNeeds())andArm()});
 /* re-arm whenever there is something to go back to again */
 {const g0=go;go=function(t){const from=tab,r=g0.apply(this,arguments);if(!andBackGo&&from&&from!==tab){andTrail.push(from);if(andTrail.length>20)andTrail.shift()}if(tab!=='home'||andTrail.length)andArm();return r}}
-{const o0=openSheet;openSheet=function(){const r=o0.apply(this,arguments);andArm();document.documentElement.classList.add('sheeton');return r}}
-{const p0=pushSheet;pushSheet=function(){const r=p0.apply(this,arguments);andArm();document.documentElement.classList.add('sheeton');return r}}
-{const c0=closeSheet;closeSheet=function(){const r=c0.apply(this,arguments);document.documentElement.classList.remove('sheeton');return r}}
-{const lo=launcherOpen;launcherOpen=function(){const r=lo.apply(this,arguments);andArm();document.documentElement.classList.add('lopen');return r}}
-{const lc=launcherClose;launcherClose=function(){const r=lc.apply(this,arguments);document.documentElement.classList.remove('lopen');return r}}
+{const o0=openSheet;openSheet=function(){const r=o0.apply(this,arguments);andArm();return r}}
+{const p0=pushSheet;pushSheet=function(){const r=p0.apply(this,arguments);andArm();return r}}
+{const c0=closeSheet;closeSheet=function(){const r=c0.apply(this,arguments);return r}}
+{const lo=launcherOpen;launcherOpen=function(){const r=lo.apply(this,arguments);andArm();return r}}
+{const lc=launcherClose;launcherClose=function(){const r=lc.apply(this,arguments);return r}}
 
 /* ---------- one-tap install from Chrome ---------- */
 let andInstallEvt=null;
@@ -63,10 +53,9 @@ addEventListener('appinstalled',()=>{andInstallEvt=null;toast('Apex is installed
 function installBtn(){return andInstallEvt?`<button class="btn primary block" style="margin:4px 0 10px" data-a="and-install">Install Apex</button><p class="small muted" style="margin:0 0 6px">Or do it by hand:</p>`:''}
 
 function androidAction(a){
-  if(a==='and-launch'){if(typeof haptic==='function')haptic();launcherOpen(false);return true}
   if(a==='and-install'&&andInstallEvt){const e=andInstallEvt;andInstallEvt=null;e.prompt();e.userChoice.then(c=>{if(c&&c.outcome==='accepted')toast('Installing Apex…')}).catch(()=>{});return true}
-  if(a==='and-preview'){try{localStorage.setItem('apex.androidPreview',andPreview()?'0':'1')}catch(e){}document.documentElement.classList.toggle('android',androidMode());if(androidMode())andHandle();closeSheet();toast(androidMode()?'Android layout preview on.':'Android layout preview off.');return true}
+  if(a==='and-preview'){try{localStorage.setItem('apex.androidPreview',andPreview()?'0':'1')}catch(e){}document.documentElement.classList.toggle('android',androidMode());closeSheet();toast(androidMode()?'Android layout preview on.':'Android layout preview off.');return true}
   return false}
 
 /* called once the app has drawn its dock */
-function androidBoot(){if(!androidMode())return;andHandle();if(tab!=='home')andArm()}
+function androidBoot(){if(!androidMode())return;if(tab!=='home')andArm()}

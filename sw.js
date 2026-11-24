@@ -4,7 +4,7 @@
      check (version.json, which bypasses this worker with ?u=); updating clears the saved copies, so it loads fresh.
    - files with ?v=<version> in the address (the app's scripts, scanner and font) and the sync library never change for a given
      address, so the saved copy is used straight away with no network wait. */
-const CACHE='apex-shell-v77';
+const CACHE='apex-shell-v78';
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(['./','index.html','config.js','manifest.webmanifest','icon-192.png','vendor/zxing-1d.min.js?v=0.23.0','fonts/nunito-latin.woff?v=1','data/afcd-r3.json?v=1'])).catch(()=>{}))});
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
 /* A new index.html is only saved once every script it loads is saved too, so the next launch also works with no signal. */

@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.78',['Android: the dock is no longer hidden behind the navigation bar at the bottom of the screen','Android: removed the extra handle above the dock; the one on the dock opens all features']],
   ['0.77',['Android: the Back button closes what is open, then goes back through your screens, and leaves the app from Home','Android: the dock sits clear of the system bar, with a handle above it to open all features','Android: swipes from the screen edge are left to Android, so they no longer change page by accident','Android: a one-tap Install Apex button when Chrome offers it']],
   ['0.76',['Over 1,500 Australian foods built in (Australian Food Composition Database), shown as "Australian average" and available offline','Apex now opens straight away on slow internet and fetches updates in the background','Data sources and licences page in Settings → About']],
   ['0.75',['Tapping a weight or reps box now highlights the number, so typing replaces it','The +/− bar above the keyboard is gone','Drop sets: add the weights you dropped to. They count towards volume and show in History','The rest beep and spoken cues now ask your music to lower its volume and carry on, rather than stopping it']],
