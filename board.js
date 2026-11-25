@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.79',['Choosing an exercise: one drop-down per muscle group, and search opens every group with a match','104 more exercises, including V-Squat, Pendulum Squat, Belt Squat, machine presses, cable variations and more','Exercises with the same name are combined: your own ones join the built-in exercise, and two of your own join the one you have logged more sets on. All sets are kept, so records use the best of both','Creating an exercise that already exists adds the existing one instead']],
   ['0.78',['Android: the dock is no longer hidden behind the navigation bar at the bottom of the screen','Android: removed the extra handle above the dock; the one on the dock opens all features']],
   ['0.77',['Android: the Back button closes what is open, then goes back through your screens, and leaves the app from Home','Android: the dock sits clear of the system bar, with a handle above it to open all features','Android: swipes from the screen edge are left to Android, so they no longer change page by accident','Android: a one-tap Install Apex button when Chrome offers it']],
   ['0.76',['Over 1,500 Australian foods built in (Australian Food Composition Database), shown as "Australian average" and available offline','Apex now opens straight away on slow internet and fetches updates in the background','Data sources and licences page in Settings → About']],

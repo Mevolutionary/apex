@@ -206,7 +206,13 @@ html #nav.lghost{z-index:9;pointer-events:none;background:transparent!important;
 .dslot svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}.dslot span{pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 .dslot.drag{transition:none;background:rgba(255,255,255,.26);z-index:2;position:relative;box-shadow:0 10px 24px rgba(0,0,0,.4)}
 #linner p{margin:8px 0 0}
-#linner .grabline{width:40px;height:5px;border-radius:9px;background:rgba(255,255,255,.32);margin:0 auto 14px}
+#linner .pgrp{border-radius:var(--ir,12px);background:rgb(255 255 255 / .04);margin-bottom:8px;overflow:hidden}
+.pgh{width:100%;min-height:48px;padding:0 14px;text-align:left}
+.pgh .chev{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;color:var(--ink-3);transition:transform .2s cubic-bezier(.23,1,.32,1)}
+.pgrp.open .chev{transform:rotate(180deg)}
+.pgb{display:none;padding:0 6px 6px}.pgrp.open .pgb{display:block}
+.pgb>button{min-height:44px;padding:0 8px;border-radius:10px}
+.grabline{width:40px;height:5px;border-radius:9px;background:rgba(255,255,255,.32);margin:0 auto 14px}
 .ltile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:18px 8px 14px;border-radius:18px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);font-size:13px;font-weight:600;transition:transform .15s,background .3s,border-color .3s}
 .ltile{transition:transform .32s cubic-bezier(.3,1.8,.5,1),background .3s,border-color .3s}
 .ltile:active{transform:scale(.9);transition-duration:.08s}
@@ -314,13 +320,27 @@ const LIB=[
 ['squat','Back Squat','Quads'],['fsquat','Front Squat','Quads'],['legpress','Leg Press','Quads'],['legext','Leg Extension','Quads'],['bss','Bulgarian Split Squat','Quads'],['hack','Hack Squat','Quads'],['lunge','Walking Lunge','Quads'],
 ['rdl','Romanian Deadlift','Hamstrings'],['legcurl','Leg Curl','Hamstrings'],['hipthrust','Hip Thrust','Glutes'],
 ['calf','Standing Calf Raise','Calves'],['seatcalf','Seated Calf Raise','Calves'],
-['cablecrunch','Cable Crunch','Core'],['legraise','Hanging Leg Raise','Core',1],['abwheel','Ab Wheel Rollout','Core',1]
+['cablecrunch','Cable Crunch','Core'],['legraise','Hanging Leg Raise','Core',1],['abwheel','Ab Wheel Rollout','Core',1],
+/* added in 0.79 */
+['declbench','Decline Bench Press','Chest'],['mchest','Machine Chest Press','Chest'],['incmchest','Incline Machine Press','Chest'],['smbench','Smith Machine Bench Press','Chest'],['incsmbench','Incline Smith Machine Press','Chest'],['dbfly','Dumbbell Fly','Chest'],['incdbfly','Incline Dumbbell Fly','Chest'],['lowfly','Low-to-High Cable Fly','Chest'],
+['hifly','High-to-Low Cable Fly','Chest'],['declpush','Decline Push-Up','Chest',1],['rackpull','Rack Pull','Back'],['pendlay','Pendlay Row','Back'],['csrow','Chest-Supported Row','Back'],['mrow','Machine Row','Back'],['sealrow','Seal Row','Back'],['sacrow','Single-Arm Cable Row','Back'],
+['meadows','Meadows Row','Back'],['sapd','Straight-Arm Pulldown','Back'],['cglatpd','Close-Grip Lat Pulldown','Back'],['salatpd','Single-Arm Lat Pulldown','Back'],['apullup','Assisted Pull-Up','Back'],['invrow','Inverted Row','Back',1],['shrug','Barbell Shrug','Back'],['dbshrug','Dumbbell Shrug','Back'],
+['backext','Back Extension','Back',1],['pullover','Cable Pullover','Back'],['tbdead','Trap Bar Deadlift','Back'],['sdbohp','Seated Dumbbell Press','Shoulders'],['arnold','Arnold Press','Shoulders'],['mohp','Machine Shoulder Press','Shoulders'],['smohp','Smith Machine Shoulder Press','Shoulders'],['pushpress','Push Press','Shoulders'],
+['landmine','Landmine Press','Shoulders'],['clatraise','Cable Lateral Raise','Shoulders'],['mlatraise','Machine Lateral Raise','Shoulders'],['frontraise','Front Raise','Shoulders'],['revpec','Reverse Pec Deck','Shoulders'],['uprow','Upright Row','Shoulders'],['ytraise','Y-Raise','Shoulders'],['ezcurl','EZ-Bar Curl','Biceps'],
+['inccurl','Incline Dumbbell Curl','Biceps'],['cablecurl','Cable Curl','Biceps'],['bayesian','Bayesian Curl','Biceps'],['conc','Concentration Curl','Biceps'],['spider','Spider Curl','Biceps'],['mpreacher','Machine Preacher Curl','Biceps'],['ropehammer','Rope Hammer Curl','Biceps'],['revcurl','Reverse Curl','Biceps'],
+['ropepd','Rope Pushdown','Triceps'],['sapd2','Single-Arm Pushdown','Triceps'],['ohcable','Overhead Cable Extension','Triceps'],['dbohext','Dumbbell Overhead Extension','Triceps'],['jm','JM Press','Triceps'],['mdip','Machine Dip','Triceps'],['benchdip','Bench Dip','Triceps',1],['diamond','Diamond Push-Up','Triceps',1],
+['kickback','Triceps Kickback','Triceps'],['vsquat','V-Squat','Quads'],['pendulum','Pendulum Squat','Quads'],['beltsquat','Belt Squat','Quads'],['smsquat','Smith Machine Squat','Quads'],['goblet','Goblet Squat','Quads'],['ssbsquat','Safety Bar Squat','Quads'],['boxsquat','Box Squat','Quads'],
+['pausesquat','Pause Squat','Quads'],['sissy','Sissy Squat','Quads',1],['splitsquat','Split Squat','Quads'],['revlunge','Reverse Lunge','Quads'],['stepup','Step-Up','Quads'],['sllegpress','Single-Leg Leg Press','Quads'],['seatlc','Seated Leg Curl','Hamstrings'],['lyinglc','Lying Leg Curl','Hamstrings'],
+['stiffdl','Stiff-Leg Deadlift','Hamstrings'],['dbrdl','Dumbbell Romanian Deadlift','Hamstrings'],['slrdl','Single-Leg Romanian Deadlift','Hamstrings'],['goodmorning','Good Morning','Hamstrings'],['nordic','Nordic Curl','Hamstrings',1],['ghr','Glute-Ham Raise','Hamstrings',1],['glutebridge','Glute Bridge','Glutes'],['smhipthrust','Smith Machine Hip Thrust','Glutes'],
+['mhipthrust','Machine Hip Thrust','Glutes'],['kickbackc','Cable Glute Kickback','Glutes'],['abduct','Hip Abduction','Glutes'],['sumo','Sumo Deadlift','Glutes'],['kbswing','Kettlebell Swing','Glutes'],['revhyper','Reverse Hyperextension','Glutes'],['lpcalf','Leg Press Calf Raise','Calves'],['smcalf','Smith Machine Calf Raise','Calves'],
+['slcalf','Single-Leg Calf Raise','Calves',1],['donkey','Donkey Calf Raise','Calves'],['crunch','Crunch','Core',1],['mcrunch','Machine Crunch','Core'],['situp','Decline Sit-Up','Core',1],['kneeraise','Hanging Knee Raise','Core',1],['captain','Captain\'s Chair Leg Raise','Core',1],['russian','Russian Twist','Core'],
+['pallof','Pallof Press','Core'],['woodchop','Cable Woodchopper','Core'],['adduct','Hip Adduction','Other'],['farmer','Farmer\'s Carry','Other'],['wristcurl','Wrist Curl','Other'],['revwrist','Reverse Wrist Curl','Other'],['powerclean','Power Clean','Other'],['cleanpress','Clean and Press','Other']
 ].map(a=>({id:a[0],name:a[1],muscle:a[2],bw:!!a[3]}));
 const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold','#ffd166'],['Platinum','#7fe6d3'],['Diamond','#8cc7ff'],['Titan','#c9a0ff']];
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.78';
+const LB=2.20462, DAY=864e5, VERSION='0.79';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -903,13 +923,19 @@ function settingsSheet(){
       <div class="tile small">A backup file holds your workouts, weigh-ins, food log and settings. The photo version also holds your progress photos, unencrypted, so keep that file somewhere private. Restoring either kind works from the button above.</div>
       <button class="btn block danger" data-a="wipe">Delete all my data</button>`};
   openSheet(`<h2>Settings</h2><div class="setbar" role="tablist">${tabs.map(t=>`<button role="tab" aria-selected="${setTab===t[0]}" class="${setTab===t[0]?'on':''}" data-a="set-tab" data-v="${t[0]}"><svg viewBox="0 0 24 24">${t[2]}</svg><span>${t[1]}</span></button>`).join('')}</div><div class="stack" style="min-height:250px">${body[setTab]||''}</div>`,'settings')}
-function pickSheet(){const q=pickQuery.trim().toLowerCase();const list=allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q)));
-  openSheet(`<h2>Add exercise</h2><div class="stack"><input type="text" id="pick-q" data-i="pickq" value="${esc(pickQuery)}" placeholder="Search exercises">
-  <div class="row" style="overflow-x:auto;padding-bottom:4px">${['All',...MUSCLES].map(m=>`<button class="chip ${pickFilter===m?'on':''}" data-a="pick-filter" data-v="${m}">${m}</button>`).join('')}</div>
-  <div class="list" id="pick-list">${pickRows(list)}</div>
-  <div class="tile stack"><div class="small muted">Not in the list? Create your own.</div><input type="text" id="new-name" placeholder="Exercise name" value="${list.length?'':esc(pickQuery)}"><div class="row"><select id="new-muscle" aria-label="Muscle group">${MUSCLES.map(m=>`<option ${pickFilter===m?'selected':''}>${m}</option>`).join('')}</select><label class="row small" style="white-space:nowrap"><input type="checkbox" id="new-bw"> Bodyweight</label></div><button class="btn sm" data-a="new-ex">Create and add</button></div>
+/* Exercise picker: one drop-down per muscle group. Typing a search opens every group with a match. */
+let pickOpen={};
+const pickMatch=q=>allEx().filter(e=>!q||e.name.toLowerCase().includes(q));
+function pickSheet(){const q=pickQuery.trim().toLowerCase();
+  openSheet(`<h2>Add exercise</h2><div class="stack"><input type="text" id="pick-q" data-i="pickq" value="${esc(pickQuery)}" placeholder="Search ${allEx().length} exercises" autocomplete="off">
+  <div id="pick-list">${pickGroups(pickMatch(q),!!q)}</div>
+  <div class="tile stack"><div class="small muted">Not in the list? Create your own.</div><input type="text" id="new-name" placeholder="Exercise name" value="${q&&!pickMatch(q).length?esc(pickQuery):''}"><div class="row"><select id="new-muscle" aria-label="Muscle group">${MUSCLES.map(m=>`<option ${pickFilter===m?'selected':''}>${m}</option>`).join('')}</select><label class="row small" style="white-space:nowrap"><input type="checkbox" id="new-bw"> Bodyweight</label></div><button class="btn sm" data-a="new-ex">Create and add</button></div>
   </div>`)}
-const pickRows=list=>list.length?list.map(e=>`<button class="row between" style="width:100%;text-align:left" data-a="add-ex" data-v="${esc(e.id)}"><span style="font-weight:600">${esc(e.name)}</span><span class="small muted">${e.muscle}</span></button>`).join(''):'<div class="muted small">No matches.</div>';
+function pickGroups(list,searching){if(!list.length)return'<div class="muted small">No matches. You can create it below.</div>';
+  return MUSCLES.map(m=>{const g=list.filter(e=>e.muscle===m).sort((a,b)=>a.name.localeCompare(b.name));if(!g.length)return'';const open=searching||!!pickOpen[m];
+    return `<div class="pgrp${open?' open':''}"><button class="pgh row between" data-a="pick-group" data-v="${m}" aria-expanded="${open}"><span style="font-weight:800">${m}</span><span class="row" style="gap:8px"><span class="small muted num">${g.length}</span><svg class="chev" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></span></button>
+      <div class="pgb">${open?pickRows(g):''}</div></div>`}).join('')}
+const pickRows=list=>list.map(e=>`<button class="row between" style="width:100%;text-align:left" data-a="add-ex" data-v="${esc(e.id)}"><span style="font-weight:600">${esc(e.name)}</span>${e.id.startsWith('c_')?'<span class="small muted">Yours</span>':''}</button>`).join('');
 function platesSheet(v,bar){const lb=unit()==='lb',sizes=lb?[45,35,25,10,5,2.5]:[25,20,15,10,5,2.5,1.25],cols=['#ff6b6b','#6fa8ff','#ffd166','#5fe3a1','#f5f7fc','#c9a0ff','#aeb6c6'];bar=bar||(lb?45:20);v=v||(lb?135:60);
   let side=(v-bar)/2;const used=[];for(const s of sizes)while(side>=s-1e-9){used.push(s);side-=s}
   const stack=used.map(s=>`<div class="p" style="height:${40+s/sizes[0]*70}px;background:${cols[sizes.indexOf(s)]}">${s}</div>`).join('');
@@ -952,11 +978,18 @@ const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
 const ALIAS={benchpressbarbell:'bench',squatbarbell:'squat',deadliftbarbell:'dead',overheadpressbarbell:'ohp',bentoverrowbarbell:'row',pullup:'pullup',chinup:'chinup',inclinebenchpressbarbell:'incbench',benchpressdumbbell:'dbbench',inclinebenchpressdumbbell:'incdb',latpulldowncable:'latpd',latpulldownmachine:'latpd',seatedcablerowvbargripcable:'cablerow',seatedcablerowbargrip:'cablerow',seatedrowcable:'cablerow',seatedcablerow:'cablerow',romaniandeadliftbarbell:'rdl',romaniandeadliftdumbbell:'rdl',legextensionmachine:'legext',legpressmachine:'legpress',legpresshorizontalmachine:'legpress',seatedlegcurlmachine:'legcurl',lyinglegcurlmachine:'legcurl',standingcalfraisemachine:'calf',standingcalfraisesmith:'calf',calfpressmachine:'calf',seatedcalfraise:'seatcalf',lateralraisedumbbell:'latraise',lateralraisecable:'latraise',lateralraisemachine:'latraise',bicepcurlbarbell:'curl',ezbarbicepscurl:'curl',bicepcurldumbbell:'dbcurl',bicepcurlcable:'dbcurl',hammercurldumbbell:'hammer',preachercurlbarbell:'preacher',preachercurlmachine:'preacher',preachercurldumbbell:'preacher',triceppushdown:'pushdown',tricepspushdown:'pushdown',tricepropepushdown:'pushdown',tricepsropepushdown:'pushdown',skullcrusherbarbell:'skull',skullcrusherdumbbell:'skull',tricepsextensiondumbbell:'ohext',tricepsextensioncable:'ohext',overheadtricepsextensioncable:'ohext',benchpressclosegripbarbell:'cgbench',hipthrustbarbell:'hipthrust',hipthrustmachine:'hipthrust',chestflymachine:'pecdeck',butterflypecdeck:'pecdeck',cableflycrossovers:'fly',chestflycable:'fly',shoulderpressdumbbell:'dbohp',shoulderpressmachine:'dbohp',overheadpressdumbbell:'dbohp',pullupweighted:'pullup',pullupassisted:'pullup',chinupweighted:'chinup',bulgariansplitsquat:'bss',hacksquat:'hack',hacksquatmachine:'hack',dumbbellrow:'dbrow',tbarrow:'tbar',frontsquat:'fsquat',chestdip:'dip',tricepdip:'dip',chestdipweighted:'dip',pushup:'pushup',cablecrunch:'cablecrunch',hanginglegraise:'legraise',abwheel:'abwheel',reardeltreverseflydumbbell:'reardelt',reardeltreverseflymachine:'reardelt',reardeltreverseflycable:'reardelt',facepull:'facepull',lunge:'lunge',walkinglunge:'lunge',walkinglungedumbbell:'lunge'};
 const MUSCLE_HINT=[['Hamstrings',/leg curl|hamstring|romanian|rdl|good morning|stiff/],['Quads',/squat|leg press|leg ext|lunge|quad|step.?up/],['Glutes',/glute|hip thrust|abduct|hip ext/],['Calves',/calf/],['Triceps',/tricep|pushdown|skull|close.?grip/],['Chest',/bench|chest|fly|pec|push.?up|dip/],['Shoulders',/shoulder|overhead|lateral|delt|face pull|arnold|upright|military/],['Back',/row|pull.?up|chin|lat |pulldown|pull.?down|deadlift|back ext|shrug|pullover/],['Biceps',/curl|bicep/],['Core',/crunch|plank|\bab|leg raise|knee raise|sit.?up|russian|oblique|twist/]];
 /* Find the built-in exercise a free-text name refers to, e.g. "Bench Press (Barbell)" or "Squat (Barbell)". */
-function matchExercise(name){const by={};LIB.forEach(e=>by[norm(e.name)]=e.id);const n=norm(name);if(by[n])return by[n];if(ALIAS[n])return ALIAS[n];
+function matchExercise(name){const by={};LIB.forEach(e=>{by[norm(e.name)]=e.id;by[norm(e.name).replace(/s$/,'')]=by[norm(e.name).replace(/s$/,'')]||e.id});const n=norm(name);if(by[n])return by[n];if(ALIAS[n])return ALIAS[n];if(by[n.replace(/s$/,'')])return by[n.replace(/s$/,'')];
   const m=/^(.*?)\s*\((.*?)\)\s*$/.exec(name);if(m){const c=[norm(m[2]+' '+m[1]),norm(m[1])];for(const k of c){if(by[k])return by[k];if(ALIAS[k])return ALIAS[k]}}return null}
 const guessMuscle=name=>{const s=name.toLowerCase();for(const [m,re] of MUSCLE_HINT)if(re.test(s))return m;return 'Other'};
 /* Tidy exercises created by an import: fold them into built-in ones where the name matches, and give the rest a muscle group. Returns true if anything changed. */
+/* Also folds together your own exercises that share a name ("V Squat" and "V-Squat"): the one with the most sets logged
+   keeps its name and settings, and every set from both moves to it, so records count the best of both. A built-in
+   exercise always wins over your own one of the same name, because ranks, tips and the leaderboard use its id. */
 function tidyCustom(){let ch=false;const map={};for(const c of S.custom){const id=matchExercise(c.name);if(id)map[c.id]=id;else if(c.muscle==='Other'){const g=guessMuscle(c.name);if(g!=='Other'){c.muscle=g;ch=true}}}
+  {const sets={},cnt=w=>{for(const e of w.exercises)sets[e.exId]=(sets[e.exId]||0)+e.sets.length};S.workouts.forEach(cnt);if(S.active)cnt(S.active);
+   const groups={};for(const c of S.custom)if(!map[c.id]){const k=norm(c.name).replace(/s$/,'');(groups[k]=groups[k]||[]).push(c)}
+   for(const k in groups){const g=groups[k];if(g.length<2)continue;g.sort((x,y)=>(sets[y.id]||0)-(sets[x.id]||0));for(const c of g.slice(1))map[c.id]=g[0].id}}
+  if(Object.keys(map).length&&S.settings.exNotes){const n=S.settings.exNotes;for(const from in map){const to=map[from];if(n[from]&&!n[to])n[to]=n[from];delete n[from]}}
   if(Object.keys(map).length){ch=true;S.custom=S.custom.filter(c=>!map[c.id]);for(const w of S.workouts)for(const e of w.exercises)if(map[e.exId])e.exId=map[e.exId];for(const r of S.routines)r.exIds=r.exIds.map(x=>map[x]||x);if(S.active)for(const e of S.active.exercises)if(map[e.exId])e.exId=map[e.exId]}
   return ch}
 function migrate(){if(tidyCustom()){recomputePRs(S.workouts);saveAll();return true}return false}
@@ -1107,8 +1140,13 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'to-routine':{const w=S.workouts.find(w=>w.id===v);if(w){S.routines.push({id:uidGen(),name:w.name,exIds:w.exercises.map(e=>e.exId)});save('settings');closeSheet();render();toast('Saved as a routine on the Train tab.')}break}
   case 'pick':pickQuery='';pickFilter='All';pickSheet();break;
   case 'pick-filter':pickFilter=v;pickSheet();break;
+    case 'pick-group':{const g=b.closest('.pgrp'),open=!g.classList.contains('open');pickOpen[v]=open;pickFilter=v;g.classList.toggle('open',open);b.setAttribute('aria-expanded',open);
+      const body=g.querySelector('.pgb');if(open&&!body.innerHTML){const q=pickQuery.trim().toLowerCase();body.innerHTML=withTicks(pickRows(pickMatch(q).filter(e=>e.muscle===v).sort((a,c)=>a.name.localeCompare(c.name))))}
+      const sel=$('#new-muscle');if(sel&&open)sel.value=v;break}
   case 'add-ex':addExercise(v);save('active');closeSheet();render();break;
-  case 'new-ex':{const name=$('#new-name').value.trim();if(!name){toast('Give the exercise a name.');break}const id='c_'+uidGen();S.custom.push({id,name,muscle:$('#new-muscle').value,bw:$('#new-bw').checked});addExercise(id);save('settings','active');closeSheet();render();break}
+  case 'new-ex':{const name=$('#new-name').value.trim();if(!name){toast('Give the exercise a name.');break}
+      {const k=norm(name).replace(/s$/,''),same=matchExercise(name)||(allEx().find(e=>norm(e.name).replace(/s$/,'')===k)||{}).id;if(same){addExercise(same);save('active');closeSheet();render();toast(exById(same).name+' is already in the list, so that one was added.');break}}
+      const id='c_'+uidGen();S.custom.push({id,name,muscle:$('#new-muscle').value,bw:$('#new-bw').checked});addExercise(id);save('settings','active');closeSheet();render();break}
   case 'rm-ex':S.active.exercises.splice(x,1);save('active');render();break;
   case 'add-set':{const st=S.active.exercises[x].sets,l=st[st.length-1]||{};st.push({w:l.w??null,r:l.r??null,done:false});save('active');render();break}
   case 'rm-set':S.active.exercises[x].sets.pop();save('active');render();break;
@@ -1144,7 +1182,7 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
 document.addEventListener('input',ev=>{const t=ev.target,i=t.dataset.i;if(typeof nutInput==='function'&&nutInput(t))return;if(!i)return;
   if(i==='set'){const st=S.active.exercises[+t.dataset.x].sets[+t.dataset.s],n=parseFloat(t.value);if(t.dataset.f==='w')st.w=isNaN(n)?null:Math.round(toKg(n)*100)/100;else st.r=isNaN(n)?null:Math.round(n);save('active')}
   else if(i==='wname'){S.active.name=t.value;save('active')}
-  else if(i==='pickq'){pickQuery=t.value;const q=pickQuery.trim().toLowerCase();$('#pick-list').innerHTML=pickRows(allEx().filter(e=>(pickFilter==='All'||e.muscle===pickFilter)&&(!q||e.name.toLowerCase().includes(q))))}
+  else if(i==='pickq'){pickQuery=t.value;const q=pickQuery.trim().toLowerCase();$('#pick-list').innerHTML=withTicks(pickGroups(pickMatch(q),!!q));const nn=$('#new-name');if(nn)nn.value=q&&!pickMatch(q).length?pickQuery:''}
   else if(i==='plates'){const v=parseFloat($('#pl-v').value)||0,b=parseFloat($('#pl-b').value)||0,id=t.id,pos=t.selectionStart;platesSheet(v,b);const el=$('#'+id);el.focus();try{el.setSelectionRange(pos,pos)}catch(e){}}});
 document.addEventListener('change',ev=>{const t=ev.target;if(t.dataset&&t.dataset.i==='exnote'){const m=S.settings.exNotes=S.settings.exNotes||{},val=t.value.trim();if(val)m[t.dataset.v]=val;else delete m[t.dataset.v];save('settings');return}if(typeof nutChange==='function'&&nutChange(t))return;if(typeof coachChange==='function'&&coachChange(t))return;
   if(t.id==='bw-photo'){const f=t.files&&t.files[0],val=parseFloat($('#bw-val').value),d=$('#bw-date').value||ymd(Date.now());if(!f)return;if(!(val>0)){toast('Enter your weight first, then add the photo.');return}
