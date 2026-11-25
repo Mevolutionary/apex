@@ -118,8 +118,8 @@ function calCard(){const ws=V().workouts,now=new Date(),m=new Date(now.getFullYe
 function dropRow(s,i,j){if(s.t!=='d')return'';const dr=s.dr||[],gap=rirOn()?'<span></span>':'';
   /* each drop sits in the same columns as the set above it, so the weights and reps line up */
   const rows=dr.map((d,k)=>`<span class="dn" aria-hidden="true">↳</span><span class="prev">Drop ${k+1}</span>
-    <span><input type="number" inputmode="decimal" step="any" data-i="drop" data-x="${i}" data-s="${j}" data-k="${k}" data-f="w" value="${d.w!=null?disp(d.w):''}" placeholder="0" aria-label="Drop ${k+1} weight, set ${j+1}"></span>
-    <span><input type="number" inputmode="decimal" data-i="drop" data-x="${i}" data-s="${j}" data-k="${k}" data-f="r" value="${d.r??''}" placeholder="0" aria-label="Drop ${k+1} reps, set ${j+1}"></span>${gap}
+    <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" step="any" data-i="drop" data-x="${i}" data-s="${j}" data-k="${k}" data-f="w" value="${d.w!=null?disp(d.w):''}" placeholder="0" aria-label="Drop ${k+1} weight, set ${j+1}"></span>
+    <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" data-i="drop" data-x="${i}" data-s="${j}" data-k="${k}" data-f="r" value="${d.r??''}" placeholder="0" aria-label="Drop ${k+1} reps, set ${j+1}"></span>${gap}
     <button class="dropx" data-a="drop-rm" data-x="${i}" data-s="${j}" data-v="${k}" aria-label="Remove drop ${k+1}">×</button>`).join('');
   return rows+`<div class="dropadd"><button class="chip" data-a="drop-add" data-x="${i}" data-s="${j}">${dr.length?'+ Another drop':'+ Add the weight you dropped to'}</button></div>`}
 (()=>{const st=document.createElement('style');st.textContent=`.sets .dn{color:var(--blue);font-weight:800;text-align:center;align-self:center}

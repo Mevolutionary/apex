@@ -9,7 +9,10 @@
 .shake{animation:shake 360ms cubic-bezier(.23,1,.32,1)}
 html.calm .shake{animation:none}
 @media (prefers-reduced-motion:reduce){.shake{animation:none}}
-#toast .undo{margin-left:12px;padding:10px 14px;margin-top:-10px;margin-bottom:-10px;margin-right:-10px;border-radius:999px;font-weight:800;color:var(--ink);background:rgb(255 255 255 / .16);min-height:44px}
+/* message and Undo sit side by side on one line; a long exercise name is shortened with … rather than pushing Undo onto a second line */
+#toast.act{display:flex;align-items:center;gap:12px;max-width:min(92vw,440px);padding-right:8px}
+#toast.act>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#toast .undo{flex:none;margin:-6px 0;padding:0 16px;border-radius:999px;font-weight:800;color:var(--ink);background:rgb(255 255 255 / .16);min-height:44px}
 #toast.act{pointer-events:auto}
 .hfade{-webkit-mask-image:linear-gradient(90deg,transparent,#000 var(--fl,0%) calc(100% - var(--fr,0%)),transparent);mask-image:linear-gradient(90deg,transparent,#000 var(--fl,0%) calc(100% - var(--fr,0%)),transparent)}
 [data-a="settings"]{position:relative}
@@ -55,6 +58,8 @@ function polishAction(a,v,b){const x=b&&b.dataset?+b.dataset.x:NaN;switch(a){
     const wI=document.getElementById('w-'+i+'-'+j),rI=document.getElementById('r-'+i+'-'+j);
     if(wI&&document.activeElement!==wI){wI.value=st.w==null?'':disp(st.w)}if(rI&&document.activeElement!==rI){rI.value=st.r==null?'':st.r}
     [wI,rI].forEach(el=>{if(el&&el.parentElement)el.parentElement.classList.toggle('done',st.done)});
+    /* a drop set's drops turn green with it */
+    document.querySelectorAll('[data-i="drop"][data-x="'+i+'"][data-s="'+j+'"]').forEach(el=>el.parentElement.classList.toggle('done',st.done));
     const ex=exById(e.exId),best=bestOf(S.workouts,e.exId),isPr=st.t!=='w'&&st.done&&best&&score(ex,st)>best.sc+1e-6,n=b.parentElement&&b.parentElement.querySelector('[data-a="set-type"][data-s="'+j+'"]');
     if(n){let lab;if(st.t)lab=SETT[st.t][0];else{lab=0;for(let k=0;k<=j;k++)if(e.sets[k].t!=='w')lab++}n.innerHTML=isPr?'<span class="pr">PR</span>':lab}
     const el=document.getElementById('estleft');if(el&&typeof estLeft==='function')el.textContent=estLeft();
