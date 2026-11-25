@@ -36,6 +36,7 @@ function termsSheet(){pushMode=!!$('#scrim').classList.contains('on');openSheet(
 
 /* ---------- patch notes ---------- */
 const NOTES=[
+  ['0.81',['Reorder exercises in a workout by dragging the bar at the top of each one: it lifts, the others fold to their names, and you drop it where you want','Your own exercises can work several muscles, with a drop-down for the part of each (upper chest, rear delts and so on). Secondary muscles count half a set each','The rest timer fits on narrow phones, so Skip is no longer cut off','Small-screen fixes: workout columns, the Nutrition date, the Body summary tiles and long option rows; the rest timer no longer covers the last card']],
   ['0.80',['The Undo message now fits on one line, with Undo beside it','Drop-set weights and reps turn green with the set when you tick it']],
   ['0.79',['Choosing an exercise: one drop-down per muscle group, and search opens every group with a match','104 more exercises, including V-Squat, Pendulum Squat, Belt Squat, machine presses, cable variations and more','Exercises with the same name are combined: your own ones join the built-in exercise, and two of your own join the one you have logged more sets on. All sets are kept, so records use the best of both','Creating an exercise that already exists adds the existing one instead']],
   ['0.78',['Android: the dock is no longer hidden behind the navigation bar at the bottom of the screen','Android: removed the extra handle above the dock; the one on the dock opens all features']],

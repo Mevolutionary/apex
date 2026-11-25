@@ -119,7 +119,7 @@ html.nohap .hx{display:none!important}
 /* shell */
 #app{position:relative;z-index:1;height:100%;max-width:540px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden}
 main{flex:1;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain;touch-action:pan-y;-webkit-overflow-scrolling:touch;padding:calc(env(safe-area-inset-top) + 26px) max(18px,env(safe-area-inset-right)) calc(var(--sab) + 132px) max(18px,env(safe-area-inset-left));display:flex;flex-direction:column;gap:16px}
-.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 6px 4px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:8px 12px;padding:0 6px 4px;flex-wrap:wrap}
 .top h1{font-size:32px;font-weight:900;letter-spacing:-.4px;line-height:1.1}
 .top .sub{color:var(--ink-2);font-size:14px;margin-bottom:2px}
 
@@ -226,6 +226,9 @@ html #nav.lghost{z-index:9;pointer-events:none;background:transparent!important;
 #rest.on{display:flex}
 #rest .bar{position:absolute;left:0;top:0;bottom:0;width:100%;transform-origin:left;background:linear-gradient(90deg in oklch,oklch(62.3% 0.21 283 / .45),oklch(72.9% 0.17 35.1 / .45));z-index:-1;transition:transform 1s linear}
 #rest .t{font-family:var(--display);font-weight:900;font-size:22px;font-variant-numeric:tabular-nums;min-width:64px}
+/* narrow phones (many Androids are 360 px wide): drop the word "Rest" and slim the buttons so Skip fits */
+@media (max-width:389px){#rest{gap:6px;padding:8px 8px 8px 14px}#rest>.small{display:none}#rest .btn.sm{padding-left:12px;padding-right:12px;min-width:52px}}
+@media (max-width:339px){#rest .t{font-size:19px;min-width:54px}#rest .btn.sm{padding-left:9px;padding-right:9px;min-width:46px}}
 
 /* workout */
 .ex h3{font-size:17px;font-weight:800}
@@ -238,6 +241,12 @@ html #nav.lghost{z-index:9;pointer-events:none;background:transparent!important;
 .sslink{align-self:center;font-size:11px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--ink-2);margin:-10px 0}
 .ex.ss{border-color:rgba(123,108,255,.75)}
 .sets .prev{font-size:13px;color:var(--ink-3);text-align:center;font-variant-numeric:tabular-nums}
+/* small screens (found in the screen-size check, 0.81) */
+html:has(#rest.on) main{padding-bottom:calc(var(--sab) + 204px)}   /* the rest bar never covers the last card */
+@media (max-width:389px){.sets .prev{font-size:12px;white-space:nowrap;letter-spacing:-.2px}.sets .h{font-size:10px;letter-spacing:.3px}}
+@media (max-width:350px){.sets{grid-template-columns:24px 1fr 58px 50px 44px;gap:6px}.sets.rir{grid-template-columns:24px 1fr 54px 44px 40px 44px;gap:6px 4px}.sets .prev{font-size:11px}
+  .seg{overflow-x:auto;scrollbar-width:none}.seg::-webkit-scrollbar{display:none}.seg>*{flex:none}
+  .grid3 .tile b{font-size:15px!important;white-space:nowrap}.grid3 .tile span{font-size:11.5px;white-space:nowrap}.grid3 .tile{padding-left:10px;padding-right:10px}}
 .sets input{height:44px;min-height:44px;padding:0 4px;text-align:center;border-radius:12px;font-family:var(--display);font-weight:800;font-variant-numeric:tabular-nums}
 .hx{position:absolute;left:50%;top:50%;margin:0;transform:translate(-50%,-50%) scale(2.4);opacity:.011;z-index:3;cursor:pointer}
 .check .hx{transform:translate(-50%,-50%) scale(1.4)}
@@ -340,7 +349,7 @@ const TIERS=[['Iron','#9aa3ad'],['Bronze','#d1915f'],['Silver','#d5dbe3'],['Gold
 /* estimated 1RM as a multiple of bodyweight needed to reach Bronze … Titan (male) */
 const STD={bench:[.5,.75,1,1.25,1.5,1.9],squat:[.75,1,1.35,1.75,2.1,2.6],dead:[1,1.25,1.6,2,2.5,3],ohp:[.35,.5,.65,.8,1,1.25],row:[.5,.7,.9,1.1,1.35,1.6],pullup:[1,1.1,1.25,1.45,1.7,2]};
 const FEM={bench:.6,squat:.75,dead:.75,ohp:.62,row:.65};
-const LB=2.20462, DAY=864e5, VERSION='0.80';
+const LB=2.20462, DAY=864e5, VERSION='0.81';
 
 let S={settings:{unit:'kg',sex:'male',rest:120},custom:[],routines:[],weights:[],workouts:[],active:null,food:{},foods:[]};
 let tab='home', expanded=null, pickFilter='All', pickQuery='', confirmCb=null, rest=null, DEMO=null;
@@ -681,8 +690,8 @@ function train(){const a=S.active;if(!a){const last=S.workouts[S.workouts.length
 
   return `<div class="top"><div style="min-width:0;flex:1"><input type="text" id="wname" data-i="wname" value="${esc(a.name)}" aria-label="Workout name" style="background:none;border:0;padding:0;font-family:var(--display);font-size:28px;font-weight:900;min-height:0"><div class="sub num" id="elapsed"></div><div class="small muted" id="estleft">${typeof estLeft==='function'?estLeft():''}</div></div><button class="btn sm" data-a="plates">Plates</button></div>
   ${a.exercises.map((e,i)=>{const ex=exById(e.exId),pe=prevEx(e.exId),best=bestOf(S.workouts,e.exId),linked=i>0&&a.exercises[i-1].ss;let wn=0;
-    return `${linked?'<div class="sslink">Superset</div>':''}<section class="glass card ex ${e.ss||linked?'ss':''}"><div class="row between"><div><h3>${esc(ex.name)}</h3><div class="small muted">${ex.muscle}${ex.bw?' · bodyweight, enter added weight':''}</div></div><button class="btn sm danger" data-a="rm-ex" data-x="${i}">Remove</button></div>
-    <div class="exmeta"><button class="chip" data-a="ex-rest" data-x="${i}">Rest ${restLabel(e.exId)}</button><button class="chip" data-a="ex-swap" data-x="${i}">Swap</button><button class="chip" data-a="ex-warm" data-x="${i}">Warm-up</button>${i>0?`<button class="chip" data-a="ex-up" data-x="${i}" aria-label="Move ${esc(ex.name)} earlier">↑</button>`:''}${i<a.exercises.length-1?`<button class="chip" data-a="ex-down" data-x="${i}" aria-label="Move ${esc(ex.name)} later">↓</button>`:''}${i<a.exercises.length-1?`<button class="chip ${e.ss?'on':''}" data-a="ex-ss" data-x="${i}">Superset with next</button>`:''}</div>
+    return `${linked?'<div class="sslink">Superset</div>':''}<section class="glass card ex ${e.ss||linked?'ss':''}" data-ex="${i}">${a.exercises.length>1?`<div class="exgrab" data-x="${i}" role="button" tabindex="0" aria-label="Reorder ${esc(ex.name)}: drag, or press the up and down arrow keys"><span></span></div>`:''}<div class="row between"><div><h3>${esc(ex.name)}</h3><div class="small muted">${typeof muscText==='function'?muscText(ex):ex.muscle}${ex.bw?' · bodyweight, enter added weight':''}</div></div><button class="btn sm danger" data-a="rm-ex" data-x="${i}">Remove</button></div>
+    <div class="exmeta"><button class="chip" data-a="ex-rest" data-x="${i}">Rest ${restLabel(e.exId)}</button><button class="chip" data-a="ex-swap" data-x="${i}">Swap</button><button class="chip" data-a="ex-warm" data-x="${i}">Warm-up</button>${i>0?`<button class="chip vh" data-a="ex-up" data-x="${i}" aria-label="Move ${esc(ex.name)} earlier">↑</button>`:''}${i<a.exercises.length-1?`<button class="chip vh" data-a="ex-down" data-x="${i}" aria-label="Move ${esc(ex.name)} later">↓</button>`:''}${i<a.exercises.length-1?`<button class="chip ${e.ss?'on':''}" data-a="ex-ss" data-x="${i}">Superset with next</button>`:''}</div>
     <input type="text" class="exnote" data-i="exnote" data-v="${esc(e.exId)}" value="${esc((S.settings.exNotes||{})[e.exId]||'')}" placeholder="Note for this exercise (seat height, cues)" aria-label="Note for ${esc(ex.name)}" maxlength="140">
     <div class="sets${typeof rirOn==='function'&&rirOn()?' rir':''}"><span class="h">Set</span><span class="h">${typeof rirOn==='function'&&rirOn()?'Last':'Last time'}</span><span class="h">${ex.bw?'+'+unit():unit()}</span><span class="h">Reps</span>${typeof rirOn==='function'&&rirOn()?'<span class="h">RIR</span>':''}<span class="h">Done</span>
     ${e.sets.map((s,j)=>{const p=prevFor(pe,e.sets,j),isPr=s.t!=='w'&&s.done&&best&&score(ex,s)>best.sc+1e-6,lab=s.t?SETT[s.t][0]:++wn;if(s.t&&s.t!=='w')wn++;
@@ -736,7 +745,7 @@ function exSheet(id){const ex=exById(id),ses=[];
     <div class="tile"><div style="font-weight:800;margin-bottom:4px">Recent sessions</div><div class="list">${ses.slice(-5).reverse().map(s=>`<div class="small"><div>${niceDate(s.t)}</div><div class="muted num">${s.sets.map(x=>disp(x.w||0)+' × '+x.r).join('   ·   ')}</div></div>`).join('')}</div></div>`}
   const ladder=STD[id]?`<div class="tile"><div class="row" style="gap:12px;margin-bottom:10px">${emblem(r?r.tier:0,44)}<div><div class="num" style="font-weight:900;font-size:18px;color:${r?TIERS[r.tier][1]:'var(--ink-3)'}">${r?TIERS[r.tier][0]:'Unranked'}</div><div class="small muted">${r?r.plain.toFixed(2)+'× bodyweight'+(r.nextKg?' · '+disp(r.nextKg-r.kg)+' '+u+' to '+TIERS[r.tier+1][0]:''):bw?'Log a set to get a rank':'Log your bodyweight to get a rank'}</div></div></div>
     ${bw?`<div class="ladder">${thresholds(id).map((t,i)=>`<span class="${r&&r.tier>i?'got':''}" style="${r&&r.tier>i?'color:'+TIERS[i+1][1]:''}">${TIERS[i+1][0]} ${disp(t*bw)}</span>`).join('')}</div><div class="small muted" style="margin-top:8px">Estimated 1RM needed for each tier at ${disp(bw)} ${u} bodyweight.</div>`:''}</div>`:'';
-  openSheet(`<h2 style="margin-bottom:2px">${esc(ex.name)}</h2><p class="small">${ex.muscle}${ses.length?' · first logged '+niceDate(ses[0].t):''}</p><div class="stack">${typeof cueTile==='function'?cueTile(id):''}${ladder}${body}</div>`,'ex')}
+  openSheet(`<h2 style="margin-bottom:2px">${esc(ex.name)}</h2><p class="small">${typeof muscText==='function'?muscText(ex):ex.muscle}${id.startsWith('c_')?' · <button class="linkbtn" data-a="musc-edit" data-v="'+esc(id)+'">Edit muscles</button>':''}${ses.length?' · first logged '+niceDate(ses[0].t):''}</p><div class="stack">${typeof cueTile==='function'?cueTile(id):''}${ladder}${body}</div>`,'ex')}
 
 function ranks(){const bw=bwNow(),o=overall();
   return `<div class="top"><h1>Ranks</h1><button class="info" data-a="info" data-v="ranks">How ranks work</button></div>${demoBanner()}
@@ -929,7 +938,7 @@ const pickMatch=q=>allEx().filter(e=>!q||e.name.toLowerCase().includes(q));
 function pickSheet(){const q=pickQuery.trim().toLowerCase();
   openSheet(`<h2>Add exercise</h2><div class="stack"><input type="text" id="pick-q" data-i="pickq" value="${esc(pickQuery)}" placeholder="Search ${allEx().length} exercises" autocomplete="off">
   <div id="pick-list">${pickGroups(pickMatch(q),!!q)}</div>
-  <div class="tile stack"><div class="small muted">Not in the list? Create your own.</div><input type="text" id="new-name" placeholder="Exercise name" value="${q&&!pickMatch(q).length?esc(pickQuery):''}"><div class="row"><select id="new-muscle" aria-label="Muscle group">${MUSCLES.map(m=>`<option ${pickFilter===m?'selected':''}>${m}</option>`).join('')}</select><label class="row small" style="white-space:nowrap"><input type="checkbox" id="new-bw"> Bodyweight</label></div><button class="btn sm" data-a="new-ex">Create and add</button></div>
+  <div class="tile stack"><div class="small muted">Not in the list? Create your own.</div><input type="text" id="new-name" placeholder="Exercise name" value="${q&&!pickMatch(q).length?esc(pickQuery):''}">${typeof muscEditor==='function'?muscEditor(pickFilter&&pickFilter!=='All'?[[pickFilter,'']]:[]):`<select id="new-muscle" aria-label="Muscle group">${MUSCLES.map(m=>`<option>${m}</option>`).join('')}</select>`}<label class="row small" style="white-space:nowrap"><input type="checkbox" id="new-bw"> Bodyweight</label><button class="btn sm" data-a="new-ex">Create and add</button></div>
   </div>`)}
 function pickGroups(list,searching){if(!list.length)return'<div class="muted small">No matches. You can create it below.</div>';
   return MUSCLES.map(m=>{const g=list.filter(e=>e.muscle===m).sort((a,b)=>a.name.localeCompare(b.name));if(!g.length)return'';const open=searching||!!pickOpen[m];
@@ -1047,7 +1056,7 @@ function initGestures(){const nav=$('#nav'),view=$('#view'),sh=$('#sheet');
   nav.addEventListener('touchend',endDrag);nav.addEventListener('touchcancel',endDrag);
   /* swipe left or right anywhere on a screen to move between docked screens */
   let sw=null;
-  view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input:not(.hx),select,.phstrip,.hscroll')||(typeof andEdge==='function'&&andEdge(t.clientX))?null:{x:t.clientX,y:t.clientY}},{passive:true});
+  view.addEventListener('touchstart',e=>{const t=e.touches[0];sw=e.target.closest('input:not(.hx),select,.phstrip,.hscroll,.exgrab')||(typeof andEdge==='function'&&andEdge(t.clientX))?null:{x:t.clientX,y:t.clientY}},{passive:true});
   view.addEventListener('touchend',e=>{if(!sw)return;const t=e.changedTouches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;sw=null;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.8)return;
     const o=swipeOrder(),n=o.indexOf(tab)+(dx<0?1:-1);if(n<0||n>=o.length)return;haptic();go(o[n],1)},{passive:true});
   /* pull the launcher back down into the dock */
@@ -1142,11 +1151,11 @@ document.addEventListener('click',ev=>{if(Date.now()<ignoreTapsUntil){ev.prevent
   case 'pick-filter':pickFilter=v;pickSheet();break;
     case 'pick-group':{const g=b.closest('.pgrp'),open=!g.classList.contains('open');pickOpen[v]=open;pickFilter=v;g.classList.toggle('open',open);b.setAttribute('aria-expanded',open);
       const body=g.querySelector('.pgb');if(open&&!body.innerHTML){const q=pickQuery.trim().toLowerCase();body.innerHTML=withTicks(pickRows(pickMatch(q).filter(e=>e.muscle===v).sort((a,c)=>a.name.localeCompare(c.name))))}
-      const sel=$('#new-muscle');if(sel&&open)sel.value=v;break}
+      if(open&&typeof muscPreset==='function')muscPreset(v);break}
   case 'add-ex':addExercise(v);save('active');closeSheet();render();break;
   case 'new-ex':{const name=$('#new-name').value.trim();if(!name){toast('Give the exercise a name.');break}
       {const k=norm(name).replace(/s$/,''),same=matchExercise(name)||(allEx().find(e=>norm(e.name).replace(/s$/,'')===k)||{}).id;if(same){addExercise(same);save('active');closeSheet();render();toast(exById(same).name+' is already in the list, so that one was added.');break}}
-      const id='c_'+uidGen();S.custom.push({id,name,muscle:$('#new-muscle').value,bw:$('#new-bw').checked});addExercise(id);save('settings','active');closeSheet();render();break}
+      const id='c_'+uidGen(),mus=typeof muscRead==='function'?muscRead():null;if(mus&&!mus.muscle){toast('Pick at least one muscle group.');break}S.custom.push(Object.assign({id,name,bw:$('#new-bw').checked},mus||{muscle:$('#new-muscle').value}));addExercise(id);save('settings','active');closeSheet();render();break}
   case 'rm-ex':S.active.exercises.splice(x,1);save('active');render();break;
   case 'add-set':{const st=S.active.exercises[x].sets,l=st[st.length-1]||{};st.push({w:l.w??null,r:l.r??null,done:false});save('active');render();break}
   case 'rm-set':S.active.exercises[x].sets.pop();save('active');render();break;

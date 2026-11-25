@@ -117,7 +117,7 @@ function calCard(){const ws=V().workouts,now=new Date(),m=new Date(now.getFullYe
    to volume but never to PRs or ranks, and history shows them as 80 × 8 D → 60 × 6 → 40 × 5. */
 function dropRow(s,i,j){if(s.t!=='d')return'';const dr=s.dr||[],gap=rirOn()?'<span></span>':'';
   /* each drop sits in the same columns as the set above it, so the weights and reps line up */
-  const rows=dr.map((d,k)=>`<span class="dn" aria-hidden="true">↳</span><span class="prev">Drop ${k+1}</span>
+  const rows=dr.map((d,k)=>`<span class="dn" aria-hidden="true">↳</span><span class="prev" style="white-space:nowrap">Drop ${k+1}</span>
     <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" step="any" data-i="drop" data-x="${i}" data-s="${j}" data-k="${k}" data-f="w" value="${d.w!=null?disp(d.w):''}" placeholder="0" aria-label="Drop ${k+1} weight, set ${j+1}"></span>
     <span class="${s.done?'done':''}"><input type="number" inputmode="decimal" data-i="drop" data-x="${i}" data-s="${j}" data-k="${k}" data-f="r" value="${d.r??''}" placeholder="0" aria-label="Drop ${k+1} reps, set ${j+1}"></span>${gap}
     <button class="dropx" data-a="drop-rm" data-x="${i}" data-s="${j}" data-v="${k}" aria-label="Remove drop ${k+1}">×</button>`).join('');
@@ -134,3 +134,90 @@ document.addEventListener('focusin',e=>{const t=e.target;if(t&&t.dataset&&t.data
     if(!st.dr.length)delete st.dr;save('active');render();
     if(a==='drop-add')setTimeout(()=>{const el=document.querySelector(`[data-i="drop"][data-x="${b.dataset.x}"][data-s="${b.dataset.s}"][data-k="${st.dr.length-1}"][data-f="r"]`);if(el)el.focus()},60);return true}
   return wa2(a,v,b)}}
+
+/* ---------- drag to reorder exercises ----------
+   Each exercise card has a grab bar at the top. Hold or drag it and the card lifts (shrinks a little, with a
+   shadow and a tap of haptics), the other cards fold down to their names so it's easy to drop between them, and
+   they slide out of the way as you move. Let go to drop it. The ↑ ↓ buttons stay for screen readers only, and the
+   arrow keys move a card when its grab bar is focused. A superset only breaks where the moved card left or joined. */
+(()=>{const st=document.createElement('style');st.textContent=`
+.vh{position:absolute!important;width:1px!important;height:1px!important;min-width:0!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;border:0!important}
+.ex{position:relative}
+.exgrab{position:absolute;left:50%;top:0;transform:translateX(-50%);width:96px;height:26px;display:grid;place-items:center;touch-action:none;cursor:grab;z-index:2}
+.exgrab span{width:40px;height:5px;border-radius:3px;background:var(--ink-3);opacity:.75}
+.exgrab::after{content:'';position:absolute;inset:-6px -10px}
+#view.reorder .ex>*:not(.exgrab):not(:nth-child(2)){display:none}
+#view.reorder .ex>:nth-child(2) .btn{visibility:hidden}
+#view.reorder .ex{transition:transform .22s cubic-bezier(.23,1,.32,1)}
+#view.reorder .ex.lifted{transition:none;z-index:20;transform:translateY(var(--dy,0)) scale(.96);box-shadow:0 18px 40px rgb(0 0 0 / .45);cursor:grabbing}
+#view.reorder .ex.drop{transition:transform .22s cubic-bezier(.23,1,.32,1),box-shadow .22s}`;document.head.appendChild(st)})();
+
+let exDrag=null;
+function exMove(from,to){const l=S.active.exercises;if(to<0||to>=l.length||to===from)return;
+  /* the card above the old spot was paired "with next" to this one; the moved card's own pairing can't carry over */
+  if(from>0&&l[from-1].ss)delete l[from-1].ss;delete l[from].ss;
+  const m=l.splice(from,1)[0];l.splice(to,0,m);
+  if(to>0&&l[to-1].ss)delete l[to-1].ss;   /* it doesn't silently join the superset above */
+  save('active')}
+document.addEventListener('pointerdown',e=>{const g=e.target.closest&&e.target.closest('.exgrab');if(!g||!S.active||tab!=='train')return;
+  e.preventDefault();const from=+g.dataset.x;exDrag={from,id:e.pointerId,x0:e.clientX,y0:e.clientY,on:false,g,
+    hold:setTimeout(()=>exLift(e.clientY),280)};try{g.setPointerCapture(e.pointerId)}catch(x){}});
+function exLift(y){const d=exDrag;if(!d||d.on)return;d.on=true;clearTimeout(d.hold);const v=document.getElementById('view'),cards=[...v.querySelectorAll('section.ex')];
+  v.classList.add('reorder');const card=cards[d.from];card.classList.add('lifted');if(typeof haptic==='function')haptic();
+  /* after folding, keep the lifted card under the finger */
+  d.cards=cards;d.card=card;d.to=d.from;d.y=y;
+  d.rects=cards.map(c=>{const b=c.getBoundingClientRect();return{top:b.top,h:b.height}});d.gap=cards.length>1?(d.rects[1].top-(d.rects[0].top+d.rects[0].h)):12;
+  d.scroller=v.closest('main')||document.scrollingElement;d.st0=d.scroller.scrollTop;exPaint();exAuto()}
+function exPaint(){const d=exDrag;if(!d||!d.on)return;const scroll=d.scroller.scrollTop-d.st0;
+  d.card.style.setProperty('--dy',(d.y-(d.rects[d.from].top+d.rects[d.from].h/2)+scroll)+'px');
+  /* where would it land? compare the finger with the middles of the other cards */
+  const fy=d.y+scroll;let to=0;d.rects.forEach((r,k)=>{if(k!==d.from&&fy>r.top+r.h/2)to++});to=Math.max(0,Math.min(d.cards.length-1,to));
+  if(to!==d.to){d.to=to;if(typeof haptic==='function')haptic()}
+  const shift=d.rects[d.from].h+d.gap;d.cards.forEach((c,k)=>{if(k===d.from)return;const s=d.from<k&&k<=to?-shift:to<=k&&k<d.from?shift:0;c.style.transform=s?`translateY(${s}px)`:''})}
+function exAuto(){const d=exDrag;if(!d||!d.on)return;const H=innerHeight,edge=90;let v=0;if(d.y<edge)v=-(edge-d.y)/6;else if(d.y>H-edge-120)v=(d.y-(H-edge-120))/6;
+  if(v){d.scroller.scrollTop+=v;exPaint()}d.raf=requestAnimationFrame(exAuto)}
+document.addEventListener('pointermove',e=>{const d=exDrag;if(!d||e.pointerId!==d.id)return;d.y=e.clientY;
+  if(!d.on){if(Math.abs(e.clientY-d.y0)>6||Math.abs(e.clientX-d.x0)>6)exLift(e.clientY);return}exPaint()});
+function exEnd(e){const d=exDrag;if(!d||(e&&e.pointerId!==d.id))return;exDrag=null;clearTimeout(d.hold);cancelAnimationFrame(d.raf);if(!d.on)return;
+  const v=document.getElementById('view');d.card.classList.add('drop');d.card.style.setProperty('--dy','0px');
+  const moved=d.to!==d.from;if(moved)exMove(d.from,d.to);if(typeof haptic==='function')haptic();
+  setTimeout(()=>{v.classList.remove('reorder');render();if(moved){const c=document.querySelectorAll('#view section.ex')[d.to];if(c)c.scrollIntoView({block:'nearest'})}},moved?60:200)}
+document.addEventListener('pointerup',exEnd);document.addEventListener('pointercancel',exEnd);
+document.addEventListener('keydown',e=>{const g=e.target.closest&&e.target.closest('.exgrab');if(!g||!S.active)return;const i=+g.dataset.x;
+  if(e.key==='ArrowUp'||e.key==='ArrowDown'){e.preventDefault();const to=i+(e.key==='ArrowUp'?-1:1);if(to<0||to>=S.active.exercises.length)return;exMove(i,to);render();
+    const ng=document.querySelector('.exgrab[data-x="'+to+'"]');if(ng)ng.focus();toast(exById(S.active.exercises[to].exId).name+' moved to position '+(to+1)+'.')}});
+
+/* ---------- your own exercises: several muscles, and which part of each ----------
+   Tap muscle groups to add them; the first one is the main muscle (it decides which drop-down the exercise sits
+   under), the rest are secondary and count half a set each towards weekly sets per muscle, like the built-in
+   exercises. Each muscle has a drop-down for the part it works. Stored on the exercise as muscle, part, sec
+   ({Triceps:.5}) and parts ({Triceps:'Long head'}). */
+const MPARTS={Chest:['Whole chest','Upper chest','Middle chest','Lower chest'],Back:['Whole back','Lats','Upper back','Lower back','Traps'],Shoulders:['All heads','Front delts','Side delts','Rear delts'],
+  Biceps:['Whole biceps','Long head','Short head','Brachialis'],Triceps:['All heads','Long head','Lateral head','Medial head'],Quads:['Whole quads','Rectus femoris','Inner and outer quads'],
+  Hamstrings:['Whole hamstrings','Upper (hip hinge)','Lower (knee curl)'],Glutes:['Whole glutes','Glute max','Glute medius'],Calves:['Whole calves','Gastrocnemius','Soleus'],Core:['Whole core','Upper abs','Lower abs','Obliques'],Other:[]};
+let muscSel=[];   /* [[muscle, part], ...] while the editor is open; first is the main muscle */
+const shortPart=(m,p)=>p&&p!==MPARTS[m][0]?p.toLowerCase().replace(' '+m.toLowerCase(),'').replace(/ delts$/,''):'';
+function muscText(ex){if(!ex)return'';const main=ex.muscle+(shortPart(ex.muscle,ex.part)?' ('+shortPart(ex.muscle,ex.part)+')':''),sec=Object.keys(ex.sec||{});
+  return main+(sec.length?' · also '+sec.map(m=>m+(ex.parts&&shortPart(m,ex.parts[m])?' ('+shortPart(m,ex.parts[m])+')':'')).join(', '):'')}
+function muscEditor(sel){muscSel=sel.map(x=>x.slice());return `<div id="musced" class="stack" style="gap:8px">${muscInner()}</div>`}
+function muscInner(){const on=new Set(muscSel.map(x=>x[0]));
+  return `<div class="small muted">Muscles worked. The first is the main one.</div><div class="row wrap" style="gap:6px">${MUSCLES.map(m=>`<button class="chip ${on.has(m)?'on':''}" data-a="musc-tog" data-v="${m}" aria-pressed="${on.has(m)}">${m}</button>`).join('')}</div>
+  ${muscSel.map(([m,p],k)=>`<div class="row between" style="gap:8px"><span style="min-width:0;font-size:15px;font-weight:700">${m} <span class="small muted" style="font-weight:600">${k?'secondary':'main'}</span></span>${MPARTS[m].length?`<select data-i="musc-part" data-v="${m}" aria-label="Which part of ${m}" style="max-width:56%">${MPARTS[m].map(o=>`<option ${o===(p||MPARTS[m][0])?'selected':''}>${o}</option>`).join('')}</select>`:''}</div>`).join('')}`}
+function muscRedraw(){const el=document.getElementById('musced');if(el)el.innerHTML=withTicks(muscInner())}
+function muscPreset(m){if(!muscSel.length){muscSel=[[m,'']];muscRedraw()}}
+function muscRead(){if(!document.getElementById('musced'))return null;if(!muscSel.length)return{};const [m0,p0]=muscSel[0],out={muscle:m0,part:p0||MPARTS[m0][0]||''},sec={},parts={};
+  for(const [m,p] of muscSel.slice(1)){sec[m]=.5;parts[m]=p||MPARTS[m][0]||''}if(Object.keys(sec).length){out.sec=sec;out.parts=parts}return out}
+document.addEventListener('change',e=>{const t=e.target;if(t.dataset&&t.dataset.i==='musc-part'){const r=muscSel.find(x=>x[0]===t.dataset.v);if(r)r[1]=t.value}});
+/* secondary muscles of your own exercises feed the weekly sets per muscle, like the built-in ones */
+function muscSync(){if(typeof SECONDARY!=='object')return;for(const c of S.custom){if(c.sec)SECONDARY[c.id]=c.sec;else delete SECONDARY[c.id]}}
+{const r0=render;render=function(){muscSync();return r0.apply(this,arguments)}}
+function muscEditSheet(id){const c=S.custom.find(x=>x.id===id);if(!c)return;const sel=[[c.muscle,c.part||'']].concat(Object.keys(c.sec||{}).map(m=>[m,(c.parts||{})[m]||'']));
+  pushSheet(`<h2>${esc(c.name)}</h2><div class="stack">${muscEditor(sel)}<button class="btn primary" data-a="musc-save" data-v="${esc(id)}">Save</button></div>`,'musc')}
+{const wa3=workoutAction;workoutAction=function(a,v,b){
+  if(a==='musc-tog'){const k=muscSel.findIndex(x=>x[0]===v);if(k>=0)muscSel.splice(k,1);else muscSel.push([v,'']);muscRedraw();return true}
+  if(a==='musc-edit'){muscEditSheet(v);return true}
+  if(a==='musc-save'){const c=S.custom.find(x=>x.id===v),m=muscRead();if(!c)return true;if(!m.muscle){toast('Pick at least one muscle group.');return true}
+    delete c.sec;delete c.parts;Object.assign(c,m);save('settings');muscSync();closeSheet();render();toast('Muscles saved.');return true}
+  return wa3(a,v,b)}}
+(()=>{const st=document.createElement('style');st.textContent=`.linkbtn{display:inline;padding:0;min-height:0;background:none;color:var(--blue);font-weight:700;text-decoration:underline;text-underline-offset:2px}
+.linkbtn::after{content:'';position:absolute;inset:-12px}.linkbtn{position:relative}`;document.head.appendChild(st)})();

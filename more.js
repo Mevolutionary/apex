@@ -88,7 +88,7 @@ function moreAction(a,v,b){const x=+b.dataset.x;switch(a){
   case 'rem-make':remMake();break;
   case 'ex-warm':warmSheet(x);break;
   case 'warm-add':{const pl=warmPlan(x),e=S.active.exercises[x];if(pl.err||!pl.sets.length)break;e.sets=pl.sets.map(q=>({w:Math.round(q.w*100)/100,r:q.r,t:'w',done:false})).concat(e.sets.filter(q=>!(q.t==='w'&&!q.done)));save('active');closeSheet();render();break}
-  case 'ex-up':case 'ex-down':{const l=S.active.exercises,to=x+(a==='ex-up'?-1:1);if(to<0||to>=l.length)break;l.forEach(e=>delete e.ss);const m=l.splice(x,1)[0];l.splice(to,0,m);save('active');render();break}
+  case 'ex-up':case 'ex-down':{const l=S.active.exercises,to=x+(a==='ex-up'?-1:1);if(to<0||to>=l.length)break;if(typeof exMove==='function')exMove(x,to);else{l.forEach(e=>delete e.ss);const m=l.splice(x,1)[0];l.splice(to,0,m);save('active')}render();break}
 }}
 document.addEventListener('change',ev=>{if(ev.target&&ev.target.id==='ic-t'){const c=iconCfg();c.t=(ev.target.value.trim()||'A').slice(0,2);c.g='text';localStorage.setItem('apex.icon',JSON.stringify(c));iconApply();iconSheet()}});
 iconApply();
